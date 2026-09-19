@@ -235,3 +235,10 @@ nothing on the clean one.
 - `failed N` in the certificate - the backend returned an HTTP error or timed out (`--timeout`, default 240 s per case); the first error message is printed under "Failed rows".
 - Dataset "does not match golden_claims.json" - re-run with `--recreate-dataset`.
 - Port already in use - `agentx-trace-eval -port 4713` and update `AGENTX_API_BASE_URL`.
+
+
+## Notes added in polish loop 2
+
+- **`--reset-per-case` (default on for live runs).** Golden cases share orders (A1042 appears several times). A refund that already hit the ledger would turn the next "refund" case into an escalation, so the harness POSTs `/seed` before every live case and runs them sequentially. Pass `--no-reset-per-case --concurrency 3` when the backend is a throwaway instance you do not mind leaving dirty.
+- **`needs_info`** is a valid expected action (GC-31: unknown order id → the agent asks for the right order number and touches nothing).
+- Latest live run through the HTTP path (deterministic mode, offline scorer): 31 cases, mean 10.00, gate PASS.
