@@ -42,6 +42,7 @@ Resources:
       SecurityGroupIngress:
         - { IpProtocol: tcp, FromPort: 22,   ToPort: 22,   CidrIp: !Ref AdminCidr }
         - { IpProtocol: tcp, FromPort: 4700, ToPort: 4700, CidrIp: !Ref AdminCidr }
+        - { IpProtocol: tcp, FromPort: 8090, ToPort: 8090, CidrIp: !Ref AdminCidr }
         - { IpProtocol: tcp, FromPort: 1935, ToPort: 1935, CidrIp: 0.0.0.0/0 }
         - { IpProtocol: tcp, FromPort: 8554, ToPort: 8554, CidrIp: 0.0.0.0/0 }
   HostRole:
@@ -85,4 +86,4 @@ Outputs:
     Description: Set AWS_S3_BUCKET to this value
   HostPublicIp:
     Value: !GetAtt Host.PublicIp
-    Description: AgentX at http://<ip>:4700, RTMP push rtmp://<ip>/live/cam, RTSP pull rtsp://<ip>:8554/live/cam
+    Description: AgentX at http://<ip>:4700, Blender render worker at http://<ip>:8090, RTMP push rtmp://<ip>/live/cam, RTSP pull rtsp://<ip>:8554/live/cam

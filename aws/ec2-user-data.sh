@@ -36,4 +36,23 @@ docker run -d --name mediamtx --restart unless-stopped -p 1935:1935 -p 8554:8554
 # Phone (Larix Broadcaster / OBS): push to  rtmp://<EC2_PUBLIC_IP>/live/cam
 # Memories.ai open_stream source_url:     rtsp://<EC2_PUBLIC_IP>:8554/live/cam
 
-echo "ClaimSight host ready: AgentX on :4700, RTMP in on :1935, RTSP out on :8554"
+# --- Blender render worker (Damage Twin + Synthetic Evidence Lab) ---
+if command -v apt-get >/dev/null; then apt-get install -y blender ffmpeg nodejs npm git; else dnf install -y ffmpeg nodejs npm git && snap install blender --classic || true; fi
+git clone https://github.com/vnmoorthy/claimsight /opt/claimsight && cd /opt/claimsight && npm install --omit=dev --no-audit --no-fund
+cat >/etc/systemd/system/claimsight-render.service <<'UNIT'
+[Unit]
+Description=ClaimSight Blender render worker
+After=network-online.target
+[Service]
+WorkingDirectory=/opt/claimsight
+Environment=BLENDER_BIN=blender
+Environment=RENDER_PORT=8090
+# Environment=CLAIMSIGHT_URL=https://<your-makers-app>   # where /twin-ready callbacks go
+ExecStart=/usr/bin/npx tsx scripts/render-service.ts
+Restart=always
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload && systemctl enable --now claimsight-render
+
+echo "ClaimSight host ready: AgentX on :4700, render worker on :8090, RTMP in on :1935, RTSP out on :8554"

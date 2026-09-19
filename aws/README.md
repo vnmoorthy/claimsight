@@ -8,7 +8,8 @@ Two optional pieces, both off until configured:
    AWS_ACCESS_KEY_ID=…                   AWS_SECRET_ACCESS_KEY=…
    # S3-compatible stores (MinIO, R2): AWS_S3_ENDPOINT=http://localhost:9000
    ```
-2. **Production host (EC2).** `claimsight-infra.yaml` creates the bucket, an IAM role scoped to it, and one small instance whose user data (`ec2-user-data.sh`) installs the AgentX self-hosted engine as a systemd service and a MediaMTX relay so Memories.ai can pull a live evidence stream from a phone (Memories.ai streams are pull-only).
+2. **Production host (EC2).** The same host runs the Blender render worker (`scripts/render-service.ts` on :8090) that produces Damage Twin receipts and the Synthetic Evidence Lab clips, so rendering never touches the Makers functions.
+   Original note: `claimsight-infra.yaml` creates the bucket, an IAM role scoped to it, and one small instance whose user data (`ec2-user-data.sh`) installs the AgentX self-hosted engine as a systemd service and a MediaMTX relay so Memories.ai can pull a live evidence stream from a phone (Memories.ai streams are pull-only).
    ```bash
    aws cloudformation deploy --stack-name claimsight --template-file aws/claimsight-infra.yaml \
      --capabilities CAPABILITY_IAM --parameter-overrides KeyName=<your-key> AdminCidr=<your-ip>/32

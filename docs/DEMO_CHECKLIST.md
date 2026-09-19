@@ -4,6 +4,8 @@
 - [ ] Laptop on power, Wi-Fi + phone hotspot ready, notifications off (Do Not Disturb), screen never sleeps.
 - [ ] Backend up: `edgeone makers dev -n claimsight` (real runtime) **or** `npm run dev:local` (fallback runtime). Confirm `curl localhost:8088/stats` returns JSON.
 - [ ] UI up: `npm run dev` → http://localhost:5173. Browser zoom 110–125% for the projector; dark theme; one tab only.
+- [ ] Render worker up: `npm run render:service` (Blender on :8090) and `TWIN_RENDER_URL=http://localhost:8090` in the backend env. `curl localhost:8090/health` shows blender found.
+- [ ] Lab results present: `npm run lab -- --count 24` was run with the Memories.ai key (Lab tab shows recall / FPR).
 - [ ] AgentX up: `agentx-trace-eval --dev` → http://localhost:4700 open in a second tab (Observe → Live Traces).
 - [ ] `npm run preflight` is all PASS (backend, AI model, Memories.ai, demo clips indexed, AgentX). Fix anything it flags before going further.
 - [ ] `.env` has the real keys (`AI_GATEWAY_API_KEY`, `MEMORIES_API_KEY`, `MEMORIES_CLAIMS_COLLECTION`); `MEMORIES_STUB` unset. If anything is flaky: set `AGENT_MODE=deterministic` and `MEMORIES_STUB=1` — the demo looks identical.

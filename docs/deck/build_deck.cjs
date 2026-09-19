@@ -94,7 +94,7 @@ function imageFit(s, p, x, y, w, h) {
   const rows = [
     ['Sees the evidence', 'Memories.ai indexes the customer’s 10-second clip: "white ceramic mug, chip on the rim at 0:03". Captions, frames and a summary become the claim’s evidence record.'],
     ['Applies your policy', 'Orders and policy clauses P1–P6 live as structured JSON in Makers storage. No vector database. Every decision cites the clauses it used.'],
-    ['Executes the transaction', 'Refund or replacement is written to the ledger by a cloud function that re-checks the limits itself. Humans are pulled in only above $75 or on a fraud signal.'],
+    ['Executes the transaction', 'Refund or replacement is written to the ledger by a cloud function that re-checks the limits itself. Humans are pulled in only above $75 or on a fraud signal. The receipt is a Blender-rendered 3D twin of the damage.'],
   ];
   rows.forEach((r, i) => {
     const y = 2.35 + i * 1.45;
@@ -102,7 +102,8 @@ function imageFit(s, p, x, y, w, h) {
     text(s, r[0], { x: M + 0.65, y, w: 6.2, h: 0.4, fontSize: 19, bold: true, color: C.lInk });
     text(s, r[1], { x: M + 0.65, y: y + 0.45, w: 6.2, h: 0.95, fontSize: 13, color: C.lInk2, lineSpacingMultiple: 1.2 });
   });
-  imageFit(s, A('card.png'), 7.7, 2.2, 5.0, 4.5);
+  imageFit(s, has(A('twin/sample-mug.png')) ? A('twin/sample-mug.png') : A('card.png'), 7.3, 2.35, 5.4, 3.9);
+  text(s, 'Damage Twin receipt: rendered in Blender where Memories.ai saw the damage', { x: 7.3, y: 6.3, w: 5.4, h: 0.3, fontSize: 10, color: C.lMuted });
   footer(s, 3, false);
   s.addNotes('Three promises: it sees, it applies policy, it executes. The card on the right is what the customer and the manager both see.');
 }
@@ -139,7 +140,7 @@ function imageFit(s, p, x, y, w, h) {
   title(s, 'A chipped mug. A refund. A fraud catch.', false);
   const beats = [
     ['0:00', 'Claim', '"My mug arrived chipped, order A1042." Evidence clip attached. The trace lights up: order, policy, evidence, fraud, execute, record.'],
-    ['0:30', 'Decision', 'Damage seen at 0:02. Window checked (P1), damage visible (P2), replacement-first rule applied (P4). $24 is under the $75 limit: refund executed, transaction id on the card.'],
+    ['0:30', 'Decision', 'Damage seen at 0:02. Window checked (P1), damage visible (P2), replacement-first rule applied (P4). $24 is under the $75 limit: refund executed, transaction id on the card, and a 3D Damage Twin renders into the card 25 s later.'],
     ['1:00', 'Twin', 'Same footage from a different account. Image search finds it at 0.93 similarity. Claim frozen, escalated to Slack, denied by the manager in the Refund Desk.'],
   ];
   beats.forEach((b, i) => {
@@ -149,7 +150,7 @@ function imageFit(s, p, x, y, w, h) {
     text(s, b[1], { x: M + 1.05, y: y + 0.17, w: 4.6, h: 0.35, fontSize: 16, bold: true, color: C.lInk });
     text(s, b[2], { x: M + 1.05, y: y + 0.52, w: 4.6, h: 0.65, fontSize: 11.5, color: C.lInk2, lineSpacingMultiple: 1.15 });
   });
-  const shot = has(S('chat.png')) ? S('chat.png') : A('card.png');
+  const shot = has(S('chat-twin.png')) ? S('chat-twin.png') : has(S('chat.png')) ? S('chat.png') : A('card.png');
   card(s, 6.9, 2.2, 5.85, 4.55, false, { fill: { color: C.lSurface2 } });
   imageFit(s, shot, 7.0, 2.3, 5.65, 4.35);
   footer(s, 5, false);
@@ -172,7 +173,7 @@ function imageFit(s, p, x, y, w, h) {
   const s = base(false);
   eyebrow(s, 'The moment that turns the room', false);
   title(s, 'The same mug, a different account.', false);
-  text(s, 'Every evidence clip is indexed into the claims collection. Before paying, ClaimSight takes a frame from the new clip and runs an image search across every prior claim.', { x: M, y: 2.3, w: 5.9, h: 1.1, fontSize: 15, color: C.lInk2, lineSpacingMultiple: 1.25 });
+  text(s, 'Every evidence clip is indexed into the claims collection. Before paying, ClaimSight takes a frame from the new clip and runs an image search across every prior claim. The detector was crash-tested with a Blender-rendered synthetic evidence set.', { x: M, y: 2.3, w: 5.9, h: 1.2, fontSize: 15, color: C.lInk2, lineSpacingMultiple: 1.25 });
   text(s, '0.93', { x: M, y: 3.45, w: 3, h: 1.2, fontFace: F.display, fontSize: 64, bold: true, color: C.lCrit });
   text(s, 'similarity to the claim on order A1042, filed by another customer', { x: M, y: 4.65, w: 5.9, h: 0.5, fontSize: 14, bold: true, color: C.lInk });
   text(s, [
@@ -180,9 +181,28 @@ function imageFit(s, p, x, y, w, h) {
     { text: 'The manager gets a Slack ping through the WorkBuddy Refund Desk skill.', options: { bullet: true, breakLine: true } },
     { text: 'One click in the desk: approve or deny, with a note that lands in the audit record.', options: { bullet: true } },
   ], { x: M, y: 5.25, w: 5.9, h: 1.4, fontSize: 13, color: C.lInk2, paraSpaceAfter: 6 });
-  const shot = has(S('desk.png')) ? S('desk.png') : A('card.png');
-  card(s, 6.9, 2.2, 5.85, 4.55, false, { fill: { color: C.lSurface2 } });
-  imageFit(s, shot, 7.0, 2.3, 5.65, 4.35);
+  const labPath = path.join(ROOT, 'public', 'lab', 'results.json');
+  let lab = null;
+  try { lab = JSON.parse(fs.readFileSync(labPath, 'utf8')); } catch (e) { lab = null; }
+  const shot = has(S('lab.png')) ? S('lab.png') : has(S('desk.png')) ? S('desk.png') : A('card.png');
+  card(s, 6.9, 2.2, 5.85, 3.55, false, { fill: { color: C.lSurface2 } });
+  imageFit(s, shot, 7.0, 2.3, 5.65, 3.35);
+  const sum = lab && lab.summary ? lab.summary : null;
+  const pct = (v) => (typeof v === 'number' ? Math.round(v * 100) + '%' : '—');
+  const tiles = [
+    [sum ? String(sum.clips) : '—', 'synthetic clips rendered in Blender'],
+    [sum ? pct(sum.recall) : '—', 'twin recall at the shipped threshold'],
+    [sum ? pct(sum.fpr) : '—', 'false-positive rate'],
+    [lab && lab.recommended_threshold ? String(lab.recommended_threshold) : '—', 'similarity threshold from data'],
+  ];
+  const tw = (5.85 - 3 * 0.15) / 4;
+  tiles.forEach((t, i) => {
+    const x = 6.9 + i * (tw + 0.15), y = 5.9;
+    card(s, x, y, tw, 0.95, false);
+    text(s, t[0], { x: x + 0.12, y: y + 0.08, w: tw - 0.24, h: 0.45, fontFace: F.display, fontSize: 22, bold: true, color: C.lAccent });
+    text(s, t[1], { x: x + 0.12, y: y + 0.52, w: tw - 0.24, h: 0.4, fontSize: 8.5, color: C.lInk2, lineSpacingMultiple: 1.05 });
+  });
+  text(s, 'Synthetic Evidence Lab · detector: ' + (sum ? sum.detector : 'Memories.ai image search'), { x: 6.9, y: 5.62, w: 5.85, h: 0.25, fontSize: 9, color: C.lMuted });
   footer(s, 7, false);
   s.addNotes('This is the wow beat. Say the number out loud: ninety-three percent similarity, different account, frozen, escalated, denied.');
 }

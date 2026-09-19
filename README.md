@@ -48,6 +48,24 @@ ClaimSight closes the loop the way the hackathon's thesis describes it: **Data �
 | 🛡 | **Ships like software** | 30 golden claims, an LLM policy judge, a deploy gate with a no-regression check, PII/secrets/prompt-injection monitors, and one trace per claim in AgentX. |
 | 🔁 | **Never dies on stage** | A deterministic policy engine runs the same steps in code when no model is configured or the gateway blinks, producing the identical card. |
 
+## 🎬 Damage Twin and the Synthetic Evidence Lab (Blender)
+
+Two Blender pipelines sit on top of the claim loop. Both run headless on the laptop or on the AWS EC2 host.
+
+| | What it does | Why it matters |
+|---|---|---|
+| **Damage Twin receipt** | When a claim is decided, `blender/damage_twin.py` renders a 3D twin of the product with a pulsing marker exactly where Memories.ai saw the damage, the customer's frame and the decision composited as a HUD. The MP4 appears in the Decision Card and the manager's drawer about 25 s later. | The refund comes with a rendered receipt the customer and the manager can both read at a glance. |
+| **Synthetic Evidence Lab** | `blender/synth_evidence.py` procedurally renders labelled evidence clips (five products, damage on or off, random lighting and backgrounds, handheld camera, deliberate "twins" of the same damaged item re-filmed and sometimes mirrored). `npm run lab` indexes them into Memories.ai, runs the real fraud-twin search, and writes recall, false-positive rate and a recommended similarity threshold to `public/lab/results.json`, shown in the **Lab** tab. Without a key a local perceptual-hash baseline runs so the lab still works in demo mode. | An honest answer to "how do you know the fraud detector works": it was crash-tested with synthetic video, and the threshold comes from data. |
+
+| Damage Twin receipt | Synthetic twins (same vase, different "accounts") |
+|---|---|
+| ![Damage Twin](assets/twin/sample-mug.png) | ![Synthetic twin pair](assets/twin/synthetic-twin-pair.jpg) |
+
+```bash
+npm run render:service          # Blender render worker on :8090 (set TWIN_RENDER_URL for the backend)
+npm run lab -- --count 24       # render the synthetic set, run the detector, write public/lab/results.json
+```
+
 ## 📸 Live demo
 
 | Chat: claim → Decision Card | The fraud twin, caught before payment |
@@ -147,11 +165,11 @@ The gate is `run.gate(fail_under=7.5, no_regression=True)`. CI runs the dry-run 
 | Tool | Role in ClaimSight |
 |---|---|
 | **Tencent EdgeOne Makers** | Agent runtime (session mode, `Makers-Conversation-Id`), cloud functions, Blob storage, AI Gateway models, streaming SSE UI, tracing dashboard, one-command deploy. |
-| **Memories.ai** | Video Datalake: multipart upload, async indexing, summary and captions, frame extraction, image search over the claims collection (the fraud twin). Live path: `open_stream` + SSE captions for on-stage streaming. |
+| **Memories.ai** | Video Datalake: multipart upload, async indexing, summary and captions, frame extraction, image search over the claims collection (the fraud twin). The Synthetic Evidence Lab indexes Blender-rendered clips and measures the detector's recall and false-positive rate. Live path: `open_stream` + SSE captions for on-stage streaming. |
 | **AgentX** | Self-hosted trace-eval: golden dataset, policy-compliance judge, CI gate with no-regression check, online monitors, a trace per claim. |
 | **WorkBuddy** | `workbuddy/refund-desk` skill: pulls escalations, summarizes evidence and fraud matches, applies approve/deny, posts to Slack; daily .docx digest automation. |
 | **VeloDB** | `velodb/schema.sql`, `load.py`, `dashboard.sql`: auto-approval by hour, refunded dollars, fraud clusters, p95 latency. Verified end to end against Apache Doris 2.1 (the engine under VeloDB) in Docker: schema, loader and all 12 queries. |
-| **AWS** | S3 evidence archive on every upload (`cloud-functions/_archive.ts`, verified against an S3-compatible store), plus `aws/claimsight-infra.yaml`: a CloudFormation stack for the private evidence bucket and an EC2 host running the AgentX engine and the live-stream relay. |
+| **AWS** | S3 evidence archive on every upload (`cloud-functions/_archive.ts`, verified against an S3-compatible store), plus `aws/claimsight-infra.yaml`: a CloudFormation stack for the private evidence bucket and an EC2 host running the AgentX engine, the live-stream relay and the Blender render worker. |
 
 ## 🗂 Repository layout
 
@@ -161,11 +179,12 @@ cloud-functions/        orders-lookup · refund · replacement · claims · clai
 src/                    React app: chat, Decision Card, decision trace, Refund Desk
 data/                   orders.json · policy.json · golden_claims.json · demo_evidence.json · stubs/
 eval/                   AgentX harness: run_eval.py (gate), monitors.py
-aws/                    CloudFormation (S3 evidence bucket + EC2 host), EC2 bootstrap for AgentX and the MediaMTX live relay
+aws/                    CloudFormation (S3 evidence bucket + EC2 host), EC2 bootstrap for AgentX, the MediaMTX live relay and the Blender render worker
+blender/                damage_twin.py (3D receipt renderer), synth_evidence.py (labelled synthetic evidence), _products.py
 workbuddy/refund-desk/  WorkBuddy skill (SKILL.md + config.yaml)
 velodb/                 schema.sql · dashboard.sql · load.py
 docs/                   deck (pptx, pdf, generator), STORYBOARD.md, DEMO_CHECKLIST.md, SUBMISSION.md, BACKEND.md
-scripts/                local-harness.ts (Makers-compatible local runtime), index-demo-clips.ts (Memories.ai indexing)
+scripts/                local-harness.ts (local runtime), render-service.ts (Blender worker), lab.ts (synthetic lab), index-demo-clips.ts, preflight.ts
 assets/                 banner, architecture diagram, AgentX captures, synthetic test clips
 ```
 
