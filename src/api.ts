@@ -18,6 +18,8 @@
  *                                                 POST /claims may capture every method on that path)
  *   cloud-functions/claims-decision/…          → POST /claims-decision   {claim_id, decision, note}
  *   cloud-functions/stats/…                    → GET  /stats             counters + recent claims + backend/stub flags
+ *   cloud-functions/claim/…                    → GET  /claim?claim_id=   one full claim record (Damage Twin polling)
+ *   public/lab/results.json                    → GET  /lab/results.json  Synthetic Evidence Lab results (`npm run lab`)
  *
  * This file defines all API paths and request wrappers.
  */
@@ -33,10 +35,14 @@ import type {
   DemoEvidence,
   EvidenceStatusResponse,
   EvidenceUploadResponse,
+  LabClip,
+  LabCurvePoint,
+  LabResults,
   OrderRecord,
   StatsSnapshot,
 } from './types';
 import { median, toMillis } from './lib/format';
+import { normalizeTwin } from './lib/twin';
 
 export const API = {
   chat: '/claims',
@@ -50,8 +56,10 @@ export const API = {
   demoEvidence: '/demo-evidence',
   ordersLookup: '/orders-lookup',
   claimsList: '/claims-list',
+  claim: '/claim',
   claimsDecision: '/claims-decision',
   stats: '/stats',
+  labResults: '/lab/results.json',
 } as const;
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
@@ -603,7 +611,13 @@ function sortNewestFirst(claims: ClaimRecord[]): ClaimRecord[] {
 function coerceClaims(list: unknown[]): ClaimRecord[] {
   return list
     .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
-    .map(x => ({ ...x, claim_id: asString(x.claim_id) ?? asString(x.id) ?? crypto.randomUUID() }) as ClaimRecord);
+    .map(x => {
+      const twin = normalizeTwin(x.twin ?? x.damage_twin);
+      const record = { ...x, claim_id: asString(x.claim_id) ?? asString(x.id) ?? crypto.randomUUID() } as ClaimRecord;
+      if (twin) record.twin = twin;
+      else delete (record as { twin?: unknown }).twin;
+      return record;
+    });
 }
 
 /** GET /claims-list?status= → claim records, newest first. */
@@ -636,6 +650,42 @@ export async function fetchClaimById(claimId: string, force = false): Promise<Cl
   return list.find(c => c.claim_id === claimId) ?? null;
 }
 
+/** The record inside a GET /claim response: bare, or wrapped as {claim} / {record} / {data}. */
+function pickClaimRecord(data: unknown): ClaimRecord | null {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const obj = data as Record<string, unknown>;
+  const wrapped = ['claim', 'record', 'data', 'item']
+    .map(key => obj[key])
+    .find((v): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v));
+  const src = wrapped ?? obj;
+  if (!asString(src.claim_id) && !asString(src.id)) return null;
+  return coerceClaims([src])[0] ?? null;
+}
+
+/**
+ * GET /claim?claim_id= → one full record (the Damage Twin poll). The route is
+ * new: while a backend (or the Vite proxy) does not serve it yet, the request
+ * comes back as the SPA's HTML or fails, and the record is read from
+ * GET /claims-list instead — which carries `twin` too, just a little later.
+ */
+let _claimRouteMissing = false;
+export async function fetchClaim(claimId: string): Promise<ClaimRecord | null> {
+  if (!claimId) return null;
+  if (!_claimRouteMissing) {
+    try {
+      const data = await requestJson<unknown>(`${API.claim}?claim_id=${encodeURIComponent(claimId)}`, { method: 'GET' });
+      const record = pickClaimRecord(data);
+      if (record) return record;
+    } catch (e) {
+      if (e instanceof ApiError && e.message.includes('got HTML')) {
+        _claimRouteMissing = true;
+        console.info('[claim] GET /claim is not served here — falling back to GET /claims-list');
+      }
+    }
+  }
+  return fetchClaimById(claimId, true);
+}
+
 /** GET /stats reduced to what the top bar needs: reachability, data-source label, decision mode, queue size. */
 export async function fetchStatus(): Promise<BackendStatus> {
   try {
@@ -643,6 +693,8 @@ export async function fetchStatus(): Promise<BackendStatus> {
     const derived = (data.derived && typeof data.derived === 'object') ? data.derived as Record<string, unknown> : {};
     const stubRaw = data.memories_stubbed ?? data.memories_stub ?? data.memoriesStubbed;
     const memoriesStubbed = typeof stubRaw === 'boolean' ? stubRaw : (stubRaw === 1 || stubRaw === '1' || stubRaw === 'true' ? true : undefined);
+    const config = (data.config && typeof data.config === 'object') ? data.config as Record<string, unknown> : {};
+    const fraud = (data.fraud && typeof data.fraud === 'object') ? data.fraud as Record<string, unknown> : {};
     return {
       online: true,
       backend: asString(data.backend) ?? asString(data.storage),
@@ -650,6 +702,11 @@ export async function fetchStatus(): Promise<BackendStatus> {
       backendLabel: asString(data.backend_label) ?? asString(data.backendLabel),
       modeLabel: asString(data.mode_label) ?? asString(data.modeLabel),
       pendingReview: asNumber(derived.pending_review) ?? asNumber(data.pending_review),
+      fraudSimilarityThreshold:
+        asNumber(data.fraud_similarity_threshold) ??
+        asNumber(derived.fraud_similarity_threshold) ??
+        asNumber(config.fraud_similarity_threshold) ??
+        asNumber(fraud.similarity_threshold),
       checkedAt: Date.now(),
     };
   } catch {
@@ -713,6 +770,102 @@ export async function submitClaimDecision(
   });
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   ClaimSight — Synthetic Evidence Lab
+   ═══════════════════════════════════════════════════════════════ */
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+/** Rates arrive as 0–1; tolerate 0–100 from an older runner. */
+function asRate(v: unknown): number | undefined {
+  const n = asNumber(v);
+  if (n === undefined) return undefined;
+  return n > 1 ? n / 100 : n;
+}
+
+function coerceLabClip(raw: Record<string, unknown>): LabClip | null {
+  const clipId = asString(raw.clip_id) ?? asString(raw.id);
+  if (!clipId) return null;
+  const matches = (pickArray(raw.top_matches, []) ?? pickArray(raw.matches, []) ?? [])
+    .filter(isRecord)
+    .map(m => ({ clip_id: asString(m.clip_id) ?? asString(m.id) ?? '', score: asRate(m.score) ?? 0 }))
+    .filter(m => m.clip_id)
+    .sort((a, b) => b.score - a.score);
+  const damagedRaw = raw.damaged;
+  return {
+    clip_id: clipId,
+    product: asString(raw.product) ?? 'generic',
+    damaged: damagedRaw === true || damagedRaw === 1 || damagedRaw === 'true',
+    damage_type: asString(raw.damage_type) ?? null,
+    damage_location: asString(raw.damage_location) ?? null,
+    group_id: asString(raw.group_id),
+    twin_of: asString(raw.twin_of) ?? null,
+    mirrored: raw.mirrored === true || (isRecord(raw.variant) && raw.variant.mirrored === true),
+    poster: asString(raw.poster) ?? asString(raw.poster_url) ?? `/lab/clips/${encodeURIComponent(clipId)}.png`,
+    top_matches: matches,
+  };
+}
+
+function coerceLabCurvePoint(raw: Record<string, unknown>): LabCurvePoint | null {
+  const threshold = asNumber(raw.threshold);
+  if (threshold === undefined) return null;
+  return {
+    threshold,
+    recall: asRate(raw.recall) ?? 0,
+    fpr: asRate(raw.fpr) ?? asRate(raw.false_positive_rate) ?? 0,
+    precision: asRate(raw.precision) ?? 0,
+    f1: asRate(raw.f1) ?? 0,
+  };
+}
+
+export function coerceLabResults(raw: unknown): LabResults | null {
+  if (!isRecord(raw)) return null;
+  const clips = (pickArray(raw.clips, []) ?? []).filter(isRecord).map(coerceLabClip).filter((c): c is LabClip => c !== null);
+  const curve = (pickArray(raw.curve, []) ?? []).filter(isRecord).map(coerceLabCurvePoint).filter((p): p is LabCurvePoint => p !== null)
+    .sort((a, b) => a.threshold - b.threshold);
+  if (clips.length === 0 && curve.length === 0) return null;
+  const s = isRecord(raw.summary) ? raw.summary : {};
+  const detector = asString(raw.detector) ?? asString(s.detector) ?? 'local-baseline';
+  return {
+    generated_at: asString(raw.generated_at),
+    detector,
+    collection_id: asString(raw.collection_id),
+    options: isRecord(raw.options) ? raw.options : undefined,
+    clips,
+    curve,
+    recommended_threshold: asNumber(raw.recommended_threshold) ?? asNumber(s.recommended_threshold),
+    summary: {
+      clips: asNumber(s.clips) ?? clips.length,
+      twin_pairs: asNumber(s.twin_pairs) ?? clips.filter(c => c.twin_of).length,
+      recall: asRate(s.recall),
+      fpr: asRate(s.fpr),
+      precision: asRate(s.precision),
+      mirrored_recall: asRate(s.mirrored_recall),
+      render_seconds: asNumber(s.render_seconds),
+      detector: asString(s.detector) ?? detector,
+    },
+  };
+}
+
+/**
+ * GET /lab/results.json — written by `npm run lab`. Null when the file is not
+ * there yet (404, or the SPA's HTML on a fallback route) or is not lab output.
+ */
+export async function fetchLabResults(): Promise<LabResults | null> {
+  try {
+    const res = await fetch(API.labResults, { method: 'GET', headers: { Accept: 'application/json' }, cache: 'no-store' });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text || text.trimStart().startsWith('<')) return null;
+    return coerceLabResults(JSON.parse(text));
+  } catch (e) {
+    console.info('[lab] no results yet:', (e as Error).message);
+    return null;
+  }
+}
 
 /** Reset the demo: re-seeds orders and policy and clears claims, ledger and evidence links (POST /seed). */
 export async function resetDemo(): Promise<{ ok: boolean; cleared_records?: number }> {

@@ -1,0 +1,100 @@
+/* Damage Twin — the Blender render inside the Decision Card and the desk drawer */
+
+.block {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+}
+.card { margin: 2px 16px 10px; }
+.drawer { margin: 0 0 2px; }
+
+/* Rendering placeholder: shimmer + elapsed counter */
+.pending {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  min-height: 92px;
+  padding: 14px 14px 14px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  overflow: hidden;
+}
+.shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 25%, color-mix(in srgb, var(--accent) 16%, transparent) 50%, transparent 75%);
+  background-size: 220% 100%;
+  animation: twinShimmer 1.7s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes twinShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.pendingIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.pendingBody {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.pendingTitle { font-size: var(--t-13); font-weight: 600; color: var(--ink); }
+.pendingHint { font-size: var(--t-12); color: var(--muted); line-height: 1.45; }
+.elapsed {
+  position: relative;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--t-11);
+  font-weight: 600;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+:root[data-theme="light"] .elapsed { color: #1f5fb0; }
+
+/* Ready: the clip */
+.ready {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.video {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  background: var(--ground);
+}
+.caption {
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Failed: a muted one-liner */
+.failed {
+  font-size: var(--t-11);
+  color: var(--muted);
+  line-height: 1.45;
+}
+.failed.card { margin: 0 16px 8px; }
+.failed.drawer { margin: 0; }

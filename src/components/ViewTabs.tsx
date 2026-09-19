@@ -1,7 +1,7 @@
-import { useT } from '../i18n';
+import { useT, type MessageKeys } from '../i18n';
 import styles from './ViewTabs.module.css';
 
-export type ViewId = 'chat' | 'desk';
+export type ViewId = 'chat' | 'desk' | 'lab';
 
 interface Props {
   view: ViewId;
@@ -10,37 +10,37 @@ interface Props {
   pendingCount?: number;
 }
 
-/** Top-level "Chat | Refund Desk" switch. No router: the view is mirrored into `#desk`. */
+const TABS: { id: ViewId; full: MessageKeys; short: MessageKeys }[] = [
+  { id: 'chat', full: 'tabs.chat', short: 'tabs.chatShort' },
+  { id: 'desk', full: 'tabs.desk', short: 'tabs.deskShort' },
+  { id: 'lab', full: 'tabs.lab', short: 'tabs.labShort' },
+];
+
+/** Top-level "Chat | Refund Desk | Lab" switch. No router: the view is mirrored into `#desk` / `#lab`. */
 export default function ViewTabs({ view, onChange, pendingCount = 0 }: Props) {
   const { t } = useT();
   const pendingLabel = t('tabs.pending').replace('{0}', String(pendingCount));
   return (
     <div className={styles.tabs} role="tablist" aria-label={t('tabs.label')}>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={view === 'chat'}
-        className={`${styles.tab} ${view === 'chat' ? styles.tabActive : ''}`}
-        onClick={() => onChange('chat')}
-        data-testid="tab-chat"
-      >
-        {t('tabs.chat')}
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={view === 'desk'}
-        className={`${styles.tab} ${view === 'desk' ? styles.tabActive : ''}`}
-        onClick={() => onChange('desk')}
-        aria-label={pendingCount > 0 ? `${t('tabs.desk')} · ${pendingLabel}` : t('tabs.desk')}
-        data-testid="tab-desk"
-      >
-        <span className={styles.labelFull}>{t('tabs.desk')}</span>
-        <span className={styles.labelShort} aria-hidden="true">{t('tabs.deskShort')}</span>
-        {pendingCount > 0 && (
-          <span className={styles.badge} aria-hidden="true">{pendingCount}</span>
-        )}
-      </button>
+      {TABS.map(tab => {
+        const badge = tab.id === 'desk' && pendingCount > 0;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={view === tab.id}
+            className={`${styles.tab} ${view === tab.id ? styles.tabActive : ''}`}
+            onClick={() => onChange(tab.id)}
+            aria-label={badge ? `${t(tab.full)} · ${pendingLabel}` : t(tab.full)}
+            data-testid={`tab-${tab.id}`}
+          >
+            <span className={styles.labelFull}>{t(tab.full)}</span>
+            <span className={styles.labelShort} aria-hidden="true">{t(tab.short)}</span>
+            {badge && <span className={styles.badge} aria-hidden="true">{pendingCount}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -53,9 +53,14 @@
 
 .labelShort { display: none; }
 
-/* Narrow phones: "Desk" keeps the badge readable next to the compact controls */
+@media (max-width: 860px) {
+  .tab { padding: 0 11px; }
+}
+/* Narrow phones: Chat / Desk / Lab keep three tabs and the badge readable next to the compact controls */
 @media (max-width: 640px) {
-  .tab { padding: 0 10px; gap: 6px; }
+  .tabs { padding: 2px; gap: 1px; }
+  .tab { padding: 0 8px; gap: 5px; font-size: var(--t-12); }
   .labelFull { display: none; }
   .labelShort { display: inline; }
+  .badge { min-width: 16px; height: 16px; padding: 0 5px; font-size: 10px; }
 }

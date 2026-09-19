@@ -118,6 +118,24 @@ export interface ClaimPresentation {
   mode_label?: string;
 }
 
+/* ═══ Damage Twin — a Blender render of the damage Memories.ai described ═══ */
+
+export type TwinStatus = 'queued' | 'rendering' | 'ready' | 'failed' | 'unavailable';
+
+/**
+ * `twin` on claim records, claims-list items and the decision block. A render
+ * takes ~25 s: the UI polls GET /claim?claim_id= while `queued` / `rendering`.
+ */
+export interface DamageTwin {
+  status: TwinStatus;
+  video_url?: string;
+  poster_url?: string;
+  requested_at?: string | number;
+  ready_at?: string | number;
+  render_ms?: number;
+  error?: string;
+}
+
 /** The fenced ```decision block the agent appends to its final message. */
 export interface Decision extends ClaimPresentation {
   claim_id?: string;
@@ -131,6 +149,7 @@ export interface Decision extends ClaimPresentation {
   txn_id?: string;
   latency_ms?: number;
   reason?: string;
+  twin?: DamageTwin;
 }
 
 export type ClaimStatus = 'auto_approved' | 'pending_review' | 'approved' | 'denied' | 'replacement' | 'needs_info';
@@ -191,6 +210,7 @@ export interface ClaimRecord extends ClaimPresentation {
   tool_calls?: ToolCallTrace[];
   model?: string;
   trace?: { trace_id?: string; emitted?: boolean; endpoint?: string; reason?: string };
+  twin?: DamageTwin;
 }
 
 /** Normalised shape of GET /stats that the top bar status uses. */
@@ -203,6 +223,8 @@ export interface BackendStatus {
   /** "Policy engine" | "AI model · <model>". */
   modeLabel?: string;
   pendingReview?: number;
+  /** The fraud check's similarity threshold (`fraud_similarity_threshold`), when /stats exposes it. */
+  fraudSimilarityThreshold?: number;
   checkedAt?: number;
 }
 
@@ -282,4 +304,59 @@ export interface EvidenceState {
   stage?: EvidenceStage;
   summary?: string;
   error?: string;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Synthetic Evidence Lab (public/lab/results.json, written by `npm run lab`)
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface LabMatch {
+  clip_id: string;
+  score: number;
+}
+
+export interface LabClip {
+  clip_id: string;
+  product: string;
+  damaged: boolean;
+  damage_type?: string | null;
+  damage_location?: string | null;
+  group_id?: string;
+  /** The clip this one re-films (same damaged item, different conditions). */
+  twin_of?: string | null;
+  mirrored?: boolean;
+  /** Poster still, e.g. /lab/clips/<clip_id>.png. */
+  poster?: string;
+  top_matches: LabMatch[];
+}
+
+export interface LabCurvePoint {
+  threshold: number;
+  recall: number;
+  fpr: number;
+  precision: number;
+  f1: number;
+}
+
+export interface LabSummary {
+  clips?: number;
+  twin_pairs?: number;
+  recall?: number;
+  fpr?: number;
+  precision?: number;
+  mirrored_recall?: number;
+  render_seconds?: number;
+  detector?: string;
+}
+
+export interface LabResults {
+  generated_at?: string;
+  /** "memories.ai" | "local-baseline" */
+  detector: string;
+  collection_id?: string;
+  options?: Record<string, unknown>;
+  clips: LabClip[];
+  curve: LabCurvePoint[];
+  recommended_threshold?: number;
+  summary: LabSummary;
 }

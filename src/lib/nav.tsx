@@ -4,6 +4,7 @@
  *   ""                       → Chat
  *   "#desk"                  → Refund Desk
  *   "#desk?claim=<claim_id>" → Refund Desk with that claim's drawer open
+ *   "#lab"                   → Synthetic Evidence Lab
  *
  * `useNav().openInDesk(claimId)` is how a Decision Card jumps to its claim.
  */
@@ -32,12 +33,14 @@ export function useNav(): NavContextValue {
 export function parseHash(hash: string): { view: ViewId; claimId: string | null } {
   const raw = hash.replace(/^#/, '');
   const [path, query = ''] = raw.split('?');
+  if (path === 'lab') return { view: 'lab', claimId: null };
   if (path !== 'desk') return { view: 'chat', claimId: null };
   const claimId = new URLSearchParams(query).get('claim');
   return { view: 'desk', claimId: claimId && claimId.trim() ? claimId.trim() : null };
 }
 
 export function buildHash(view: ViewId, claimId?: string | null): string {
+  if (view === 'lab') return '#lab';
   if (view !== 'desk') return '';
   return claimId ? `#desk?claim=${encodeURIComponent(claimId)}` : '#desk';
 }

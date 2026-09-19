@@ -38,6 +38,7 @@ import ChatInput from './components/ChatInput';
 import TracePanel, { type EvidenceView } from './components/TracePanel';
 import ConversationSidebar from './components/ConversationSidebar';
 import Drawer from './components/Drawer';
+import LabView from './components/LabView';
 import RefundDesk from './components/RefundDesk';
 import ToastViewport from './components/Toast';
 import { type ViewId } from './components/ViewTabs';
@@ -115,7 +116,7 @@ function AppInner() {
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
 
-  // Top-level view: Chat | Refund Desk (mirrored into the URL hash).
+  // Top-level view: Chat | Refund Desk | Lab (mirrored into the URL hash).
   const [view, setViewState] = useState<ViewId>(getViewFromHash);
   // `#desk?claim=<id>` — the claim whose drawer the desk should open.
   const [deskFocus, setDeskFocus] = useState<DeskFocus | null>(getDeskFocusFromHash);
@@ -685,9 +686,9 @@ function AppInner() {
       )}
 
       <main className={styles.main}>
-        {/* The chat stays mounted while the desk is open so an in-flight
+        {/* The chat stays mounted while the desk or the lab is open so an in-flight
             stream or evidence upload keeps running in the background. */}
-        <div className={`${styles.chatStage} ${view === 'desk' ? styles.hidden : ''}`} aria-hidden={view === 'desk'}>
+        <div className={`${styles.chatStage} ${view !== 'chat' ? styles.hidden : ''}`} aria-hidden={view !== 'chat'}>
           <div className={styles.conversation}>
             <div className={styles.messagesShell}>
               <ChatWindow messages={messages} loading={loading} />
@@ -720,6 +721,8 @@ function AppInner() {
             modeLabel={status.modeLabel}
           />
         )}
+
+        {view === 'lab' && <LabView configuredThreshold={status.fraudSimilarityThreshold} />}
       </main>
 
       <footer className={styles.footer}>

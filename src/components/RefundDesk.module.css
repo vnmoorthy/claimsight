@@ -211,6 +211,14 @@
 
 .claimCell { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .claimText { display: flex; flex-direction: column; min-width: 0; }
+/* Film strip: this claim has a rendered Damage Twin */
+.twinMark {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  vertical-align: -2px;
+  color: var(--accent-2);
+}
 .claimText .primary, .orderCell .primary, .orderCell .sub { white-space: nowrap; }
 .nameCell .primary { overflow-wrap: anywhere; }
 

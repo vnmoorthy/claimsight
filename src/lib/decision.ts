@@ -17,6 +17,7 @@
  */
 
 import type { ClaimAction, Decision } from '../types';
+import { normalizeTwin } from './twin';
 
 export const KNOWN_ACTIONS: readonly ClaimAction[] = ['refund', 'replacement', 'escalated', 'denied', 'needs_info'];
 
@@ -109,6 +110,7 @@ export function normalizeDecision(obj: Record<string, unknown>): Decision {
     txn_id: typeof obj.txn_id === 'string' ? obj.txn_id : (typeof obj.txnId === 'string' ? obj.txnId : undefined),
     latency_ms: toNumber(obj.latency_ms ?? obj.latencyMs),
     reason: typeof obj.reason === 'string' ? obj.reason : undefined,
+    twin: normalizeTwin(obj.twin ?? obj.damage_twin ?? obj.damageTwin),
   };
 }
 

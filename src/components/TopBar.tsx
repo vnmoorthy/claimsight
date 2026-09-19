@@ -2,12 +2,11 @@ import type { BackendStatusHandle } from '../lib/useBackendStatus';
 import type { Theme } from '../lib/theme';
 import type { TraceState } from '../lib/trace';
 import { backendLabelOf } from '../lib/labels';
+import { REPO_URL } from '../lib/links';
 import { LangToggle, useT } from '../i18n';
 import ViewTabs, { type ViewId } from './ViewTabs';
 import { IconGitHub, IconHistory, IconMoon, IconReceipt, IconSun, LogoMark } from './icons';
 import styles from './TopBar.module.css';
-
-const REPO_URL = 'https://github.com/vnmoorthy/claimsight';
 
 interface Props {
   view: ViewId;

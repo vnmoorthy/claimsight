@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ClaimRecord, Decision, FraudMatch } from '../types';
 import { useT } from '../i18n';
 import { canonicalAction } from '../lib/decision';
@@ -6,7 +6,9 @@ import { fmtLatency, fmtMoney } from '../lib/format';
 import { customerNameOf, displayIdOf, matchIdOf, modeLabelOf, prefersReducedMotion } from '../lib/labels';
 import { useNav } from '../lib/nav';
 import { clauseText } from '../lib/policyClauses';
+import { mergeTwin, normalizeTwin } from '../lib/twin';
 import ActionBadge from './ActionBadge';
+import DamageTwinBlock from './DamageTwin';
 import { IconAlert, IconArrowRight, IconCheck, IconHelp, IconSearch, LogoMark } from './icons';
 import styles from './DecisionCard.module.css';
 
@@ -54,6 +56,12 @@ export default function DecisionCard({ decision, record, live = false, fallbackM
   const customerName = customerNameOf({ customer_name: decision.customer_name ?? record?.customer_name, customer_id: record?.customer_id });
   const modeLabel = modeLabelOf(t, decision.mode_label ?? record?.mode_label ?? fallbackModeLabel, record?.model);
   const canOpenDesk = Boolean(claimId) && (action === 'escalated' || action === 'needs_info');
+
+  // The twin as the block announced it, upgraded by whatever the stored record says
+  // (a card restored from history reads `ready` straight from the record).
+  const decisionTwin = decision.twin;
+  const recordTwin = record?.twin;
+  const twin = useMemo(() => mergeTwin(normalizeTwin(decisionTwin), normalizeTwin(recordTwin)), [decisionTwin, recordTwin]);
 
   // A card that just landed in a live stream scrolls itself into view.
   useEffect(() => {
@@ -169,6 +177,8 @@ export default function DecisionCard({ decision, record, live = false, fallbackM
           )}
         </div>
       </div>
+
+      <DamageTwinBlock claimId={claimId} twin={twin} variant="card" />
 
       {canOpenDesk && (
         <div className={styles.actions}>

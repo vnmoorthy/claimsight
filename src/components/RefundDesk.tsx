@@ -11,11 +11,13 @@ import type { DeskFocus } from '../lib/nav';
 import { clauseText } from '../lib/policyClauses';
 import { useToast } from '../lib/toast';
 import { stepsFromToolCalls, stepElapsedMs } from '../lib/trace';
+import { isTwinVisible, normalizeTwin } from '../lib/twin';
 import ActionBadge from './ActionBadge';
+import DamageTwinBlock from './DamageTwin';
 import { MatchLine } from './DecisionCard';
 import Drawer from './Drawer';
 import EvidenceFrame from './EvidenceFrame';
-import { IconAlert, IconArrowRight, IconBolt, IconCheck, IconClock, IconHelp, IconInbox, IconMinus, IconRefresh, IconSwap, IconX } from './icons';
+import { IconAlert, IconArrowRight, IconBolt, IconCheck, IconClock, IconFilm, IconHelp, IconInbox, IconMinus, IconRefresh, IconSwap, IconX } from './icons';
 import styles from './RefundDesk.module.css';
 
 const REFRESH_MS = 5000;
@@ -154,6 +156,12 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat, focus, 
     setSelectedId(null);
     if (focus) onFocusDone?.();
   }, [focus, onFocusDone]);
+
+  // The drawer polls GET /claim while its Damage Twin renders; fold what it
+  // brings back into the list so the row's film-strip icon lights up too.
+  const handleTwinRecord = useCallback((record: ClaimRecord) => {
+    setClaims(prev => (prev ? prev.map(c => (c.claim_id === record.claim_id ? { ...c, ...record } : c)) : prev));
+  }, []);
 
   // Deep link: open the focused claim's drawer (the record may still be loading — the
   // drawer appears as soon as the list contains it).
@@ -365,7 +373,7 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat, focus, 
           </div>
         ) : null}
       >
-        {selected && <ClaimDetail claim={selected} justDecided={justDecided === selected.claim_id} modeLabel={modeLabel} />}
+        {selected && <ClaimDetail claim={selected} justDecided={justDecided === selected.claim_id} modeLabel={modeLabel} onTwinRecord={handleTwinRecord} />}
       </Drawer>
     </section>
   );
@@ -451,6 +459,7 @@ function ClaimRow({ claim: c, selected, onOpen, modeLabel }: { claim: ClaimRecor
   const frame = evidenceFrameUrlOf(c);
   const mode = modeLabelOf(t, c.mode_label ?? modeLabel, c.model);
   const statusLabel = status === 'unknown' ? '' : t(`desk.status.${status}` as MessageKeys);
+  const twinReady = normalizeTwin(c.twin)?.status === 'ready';
 
   return (
     <tr
@@ -469,7 +478,14 @@ function ClaimRow({ claim: c, selected, onOpen, modeLabel }: { claim: ClaimRecor
         <span className={styles.claimCell}>
           {frame && <EvidenceFrame src={frame} variant="thumb" />}
           <span className={styles.claimText}>
-            <span className={`${styles.primary} mono`} title={c.claim_id !== displayId ? c.claim_id : undefined}>{displayId}</span>
+            <span className={`${styles.primary} mono`} title={c.claim_id !== displayId ? c.claim_id : undefined}>
+              {displayId}
+              {twinReady && (
+                <span className={styles.twinMark} role="img" aria-label={t('twin.ready')} title={t('twin.ready')} data-testid="twin-mark">
+                  <IconFilm size={12} />
+                </span>
+              )}
+            </span>
             <span className={styles.sub}>{fmtRelative(c.created_at)}</span>
           </span>
         </span>
@@ -523,9 +539,10 @@ function Field({ label, value, mono, title }: { label: string; value: ReactNode;
   );
 }
 
-function ClaimDetail({ claim: c, justDecided, modeLabel }: { claim: ClaimRecord; justDecided: boolean; modeLabel?: string }) {
+function ClaimDetail({ claim: c, justDecided, modeLabel, onTwinRecord }: { claim: ClaimRecord; justDecided: boolean; modeLabel?: string; onTwinRecord?: (record: ClaimRecord) => void }) {
   const { t } = useT();
   const status = normalizeStatus(c.status);
+  const twin = normalizeTwin(c.twin);
   const matches = fraudMatches(c);
   const checked = fraudChecked(c);
   const action = canonicalAction(c.decision?.action);
@@ -577,6 +594,13 @@ function ClaimDetail({ claim: c, justDecided, modeLabel }: { claim: ClaimRecord;
           <IconHelp size={14} />
           <span>{t('desk.detail.needsInfoHint')}</span>
         </div>
+      )}
+
+      {isTwinVisible(twin) && (
+        <section className={styles.detailSection} data-testid="drawer-twin">
+          <h4 className="kicker">{t('twin.kicker')}</h4>
+          <DamageTwinBlock claimId={c.claim_id} twin={twin} variant="drawer" onRecord={onTwinRecord} />
+        </section>
       )}
 
       <section className={styles.detailSection}>
