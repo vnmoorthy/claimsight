@@ -114,7 +114,7 @@ const zh: Partial<Record<keyof typeof en, string>> = {
   // Damage Twin
   "twin.kicker": "损坏孪生体",
   "twin.rendering": "正在渲染 3D 损坏孪生体…",
-  "twin.renderingHint": "Blender 正把 Memories.ai 描述的损坏放到 3D 孪生体上",
+  "twin.renderingHint": "Blender 正把 描述的损坏放到 3D 孪生体上",
   "twin.elapsed": "{0} 秒",
   "twin.caption": "损坏孪生体 · 由 Blender 根据 Memories.ai 所见渲染 · {0} 秒",
   "twin.captionNoTime": "损坏孪生体 · 由 Blender 根据 Memories.ai 所见渲染",
@@ -212,7 +212,7 @@ const zh: Partial<Record<keyof typeof en, string>> = {
   "trace.frameCaption": "0:03 处画面 · Memories.ai",
   "trace.frameAlt": "证据视频画面",
   "trace.evidenceNone": "尚未附加视频——请在输入框上传视频或选择演示片段。",
-  "trace.evidenceSummary": "Memories.ai 看到了什么",
+  "trace.evidenceSummary": "证据分析",
   "trace.evidencePending": "Agent 检查视频后会显示摘要。",
   "trace.damage": "评估",
   "trace.steps": "流水线",

@@ -1,0 +1,13 @@
+import { chromium } from 'playwright-core';
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+page.on('console', m => { if (m.type() === 'error') console.log('console.error:', m.text().slice(0, 160)); });
+page.on('pageerror', e => console.log('pageerror:', String(e).slice(0, 200)));
+const r = await page.goto('http://localhost:5176/', { waitUntil: 'load' });
+console.log('status', r?.status(), 'title', await page.title());
+await page.waitForTimeout(4000);
+await page.screenshot({ path: 'tmp/debug.png' });
+const names = await page.evaluate(() => [...document.querySelectorAll('button')].map(b => (b.getAttribute('aria-label') || b.textContent || '').trim().slice(0, 70)).filter(Boolean));
+console.log('buttons:', JSON.stringify(names.slice(0, 20)));
+console.log('body text head:', (await page.evaluate(() => document.body.innerText.slice(0, 300))).replace(/\n/g, ' | '));
+await browser.close();
