@@ -16,7 +16,7 @@ An after-sales teammate that watches the customer's evidence video, applies your
 </p>
 
 <p align="center">
-  <a href="https://claude.ai/artifact/WoCA6w4Qj6JdVAnWymBDDB">Product page + demo video</a> ·
+  <a href="https://vnmoorthy.github.io/claimsight/">Product page + demo video</a> ·
   <a href="#-live-demo">Live demo</a> ·
   <a href="#-how-a-claim-flows">How it works</a> ·
   <a href="#-quickstart">Quickstart</a> ·
@@ -77,7 +77,7 @@ npm run lab -- --count 24       # render the synthetic set, run the detector, wr
 | **Refund Desk: the human-in-the-loop queue** | **Claim drawer: evidence, trace, approve or deny** |
 | ![Refund Desk table](public/screenshots/desk-table.png) | ![Refund Desk drawer](public/screenshots/desk.png) |
 
-**Try it:** product page with the 70-second demo video: https://claude.ai/artifact/WoCA6w4Qj6JdVAnWymBDDB · run it locally in two commands (below) · Scenario presets are built into the composer: *Chipped mug, order A1042* (auto-refund), *Same mug, other account, A1043* (fraud twin → escalation), *Headphones $129, A1050* (above the limit → human approval).
+**Try it:** product page with the 70-second demo video: https://vnmoorthy.github.io/claimsight/ · run it locally in two commands (below) · Scenario presets are built into the composer: *Chipped mug, order A1042* (auto-refund), *Same mug, other account, A1043* (fraud twin → escalation), *Headphones $129, A1050* (above the limit → human approval).
 
 ## 🧭 How a claim flows
 

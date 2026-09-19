@@ -17,7 +17,7 @@ ClaimSight is an after-sales teammate that verifies damage from the customer's o
 
 **Repository:** https://github.com/vnmoorthy/claimsight
 
-**Product link:** https://claude.ai/artifact/WoCA6w4Qj6JdVAnWymBDDB (product page with the demo video; share it as "anyone with the link" before submitting) · release with deck and video: https://github.com/vnmoorthy/claimsight/releases/tag/v1.0.0
+**Product link:** https://vnmoorthy.github.io/claimsight/ (product page with the demo video; share it as "anyone with the link" before submitting) · release with deck and video: https://github.com/vnmoorthy/claimsight/releases/tag/v1.0.0
 
 **Presentation:** docs/deck/ClaimSight-deck.pptx (10 slides, also attached to the release) · docs/STORYBOARD.md (3-minute script for the judges present)
 
