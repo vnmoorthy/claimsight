@@ -17,9 +17,9 @@ ClaimSight is an after-sales teammate that verifies damage from the customer's o
 
 **Repository:** https://github.com/vnmoorthy/claimsight
 
-**Product link:** [Makers deploy URL — fill in after `edgeone makers deploy`]
+**Product link:** https://claude.ai/artifact/WoCA6w4Qj6JdVAnWymBDDB (product page with the demo video; share it as "anyone with the link" before submitting) · release with deck and video: https://github.com/vnmoorthy/claimsight/releases/tag/v1.0.0
 
-**Presentation:** docs/deck/ClaimSight-deck.pptx (10 slides) · docs/STORYBOARD.md (3-minute script)
+**Presentation:** docs/deck/ClaimSight-deck.pptx (10 slides, also attached to the release) · docs/STORYBOARD.md (3-minute script for the judges present)
 
 ## Demo-day status (say it before judges ask)
 - Memories.ai: full Video Datalake client and evidence pipeline built and contract-tested; the account had no credits on the day, so the demo runs on canned evidence and the Lab uses a local perceptual-hash baseline. Switch is one env var (`MEMORIES_STUB=0`) plus `npm run go-live:memories`.
