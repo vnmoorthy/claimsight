@@ -44,3 +44,4 @@ AGENTS.md
 docs/deck/*.pdf
 !docs/deck/ClaimSight-deck.pdf
 docs/deck/*.jpg
+blender/out/
