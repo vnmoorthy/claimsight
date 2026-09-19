@@ -42,4 +42,5 @@ AGENTS.md
   
 # Deck renders (regenerate with docs/deck/build_deck.cjs)
 docs/deck/*.pdf
+!docs/deck/ClaimSight-deck.pdf
 docs/deck/*.jpg

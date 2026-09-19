@@ -21,7 +21,8 @@ An after-sales teammate that watches the customer's evidence video, applies your
   <a href="#-quickstart">Quickstart</a> ·
   <a href="#-production-readiness">Production readiness</a> ·
   <a href="#-sponsor-technologies">Sponsor tech</a> ·
-  <a href="docs/deck/ClaimSight-deck.pptx">Deck</a> ·
+  <a href="docs/deck/ClaimSight-deck.pptx">Deck (pptx)</a> ·
+  <a href="docs/deck/ClaimSight-deck.pdf">Deck (pdf)</a> ·
   <a href="docs/STORYBOARD.md">3-minute storyboard</a>
 </p>
 
@@ -101,7 +102,7 @@ edgeone makers dev -n claimsight   # backend on http://localhost:8088 (+ /agent-
 npm run dev                 # UI on http://localhost:5173 (proxies API routes to 8088)
 ```
 
-Open the app, pick the demo clip *Chipped mug — A1042*, press **File claim**, and watch the trace light up.
+Open the app, pick the demo clip *Chipped mug — A1042*, press **File claim**, and watch the trace light up. Before a rehearsal, press **Reset demo data** in the Refund Desk (it re-seeds orders and clears the ledger, so A1042 can be refunded again).
 
 **Go live** (edit `.env`):
 
@@ -114,6 +115,7 @@ Open the app, pick the demo clip *Chipped mug — A1042*, press **File claim**, 
 | `AGENTX_OTLP_URL` / `AGENTX_API_KEY` | Where each claim's trace is sent (self-hosted AgentX). |
 | `STORAGE` | `auto` (Blob with strong consistency on Makers, memory fallback locally), `blob`, `memory`. |
 | `ADMIN_TOKEN` | Protects `POST /seed` and `POST /claims-record`. |
+| `AGENT_MODE` | `llm` or `deterministic`; empty = auto (deterministic when no model key is set). |
 
 **Deploy** to EdgeOne Makers: `edgeone login`, then `edgeone makers deploy -n claimsight --area overseas` (or import the repo in the Makers console for git-push deploys).
 
