@@ -1,0 +1,194 @@
+{
+  "_comment": "Seed orders for ClaimSight (Northwind Home). `delivered_days_ago` / `placed_days_ago` are resolved to absolute ISO timestamps relative to the moment POST /seed runs, so the return-window scenarios stay valid on any demo day. `items[].in_stock` drives the replacement-first rule (P4). `scenario` is documentation only.",
+  "customers": {
+    "c_alice": { "customer_id": "c_alice", "name": "Alice Moreno", "email": "alice@example.com" },
+    "c_mallory": { "customer_id": "c_mallory", "name": "Mallory Quinn", "email": "mallory@example.com" },
+    "c_bob": { "customer_id": "c_bob", "name": "Bob Okafor", "email": "bob@example.com" },
+    "c_carol": { "customer_id": "c_carol", "name": "Carol Nguyen", "email": "carol@example.com" },
+    "c_dave": { "customer_id": "c_dave", "name": "Dave Lindqvist", "email": "dave@example.com" },
+    "c_erin": { "customer_id": "c_erin", "name": "Erin Patel", "email": "erin@example.com" }
+  },
+  "orders": [
+    {
+      "order_id": "A1042",
+      "customer_id": "c_alice",
+      "email": "alice@example.com",
+      "status": "delivered",
+      "placed_days_ago": 6,
+      "delivered_days_ago": 3,
+      "currency": "USD",
+      "items": [
+        { "sku": "MUG-01", "name": "White ceramic mug", "qty": 1, "unit_price": 24, "category": "kitchen", "in_stock": false }
+      ],
+      "total": 24,
+      "shipping_address": "12 Harbor St, Portland, OR 97201",
+      "scenario": "clean auto-approve: chipped mug, in window, under limit, mug backordered so P4 replacement is not possible -> refund"
+    },
+    {
+      "order_id": "A1043",
+      "customer_id": "c_mallory",
+      "email": "mallory@example.com",
+      "status": "delivered",
+      "placed_days_ago": 6,
+      "delivered_days_ago": 3,
+      "currency": "USD",
+      "items": [
+        { "sku": "MUG-01", "name": "White ceramic mug", "qty": 1, "unit_price": 24, "category": "kitchen", "in_stock": false }
+      ],
+      "total": 24,
+      "shipping_address": "88 Elm Ave, Austin, TX 78701",
+      "scenario": "fraud twin: same footage as A1042 uploaded from a different account -> escalate (P5)"
+    },
+    {
+      "order_id": "A1044",
+      "customer_id": "c_bob",
+      "email": "bob@example.com",
+      "status": "delivered",
+      "placed_days_ago": 9,
+      "delivered_days_ago": 5,
+      "currency": "USD",
+      "items": [
+        { "sku": "VASE-05", "name": "Hand-blown glass vase", "qty": 1, "unit_price": 85, "category": "home_decor", "in_stock": true }
+      ],
+      "total": 85,
+      "shipping_address": "301 Pine Rd, Denver, CO 80202",
+      "scenario": "above limit ($85 > $75) -> escalate (P3)"
+    },
+    {
+      "order_id": "A1045",
+      "customer_id": "c_carol",
+      "email": "carol@example.com",
+      "status": "delivered",
+      "placed_days_ago": 14,
+      "delivered_days_ago": 10,
+      "currency": "USD",
+      "items": [
+        { "sku": "LAMP-03", "name": "Brass desk lamp", "qty": 1, "unit_price": 59, "category": "lighting", "in_stock": true }
+      ],
+      "total": 59,
+      "shipping_address": "5 Lakeview Dr, Madison, WI 53703",
+      "scenario": "replacement-first: lighting item in stock, damage visible, in window -> replacement (P4)"
+    },
+    {
+      "order_id": "A1046",
+      "customer_id": "c_dave",
+      "email": "dave@example.com",
+      "status": "delivered",
+      "placed_days_ago": 10,
+      "delivered_days_ago": 7,
+      "currency": "USD",
+      "items": [
+        { "sku": "MUG-01", "name": "White ceramic mug", "qty": 2, "unit_price": 24, "category": "kitchen", "in_stock": true }
+      ],
+      "total": 48,
+      "shipping_address": "77 Birch Ln, Seattle, WA 98101",
+      "scenario": "replacement-first: kitchen item in stock -> replacement (P4)"
+    },
+    {
+      "order_id": "A1047",
+      "customer_id": "c_erin",
+      "email": "erin@example.com",
+      "status": "delivered",
+      "placed_days_ago": 5,
+      "delivered_days_ago": 2,
+      "currency": "USD",
+      "items": [
+        { "sku": "TSHIRT-04", "name": "Organic cotton t-shirt", "qty": 1, "unit_price": 19, "category": "apparel", "in_stock": true },
+        { "sku": "MUG-01", "name": "White ceramic mug", "qty": 1, "unit_price": 24, "category": "kitchen", "in_stock": false }
+      ],
+      "total": 43,
+      "shipping_address": "19 Cedar Ct, Raleigh, NC 27601",
+      "scenario": "mixed order: worn t-shirt is non-returnable (P6); chipped mug would be refundable"
+    },
+    {
+      "order_id": "A1048",
+      "customer_id": "c_bob",
+      "email": "bob@example.com",
+      "status": "delivered",
+      "placed_days_ago": 24,
+      "delivered_days_ago": 20,
+      "currency": "USD",
+      "items": [
+        { "sku": "HDPH-02", "name": "Over-ear headphones", "qty": 1, "unit_price": 129, "category": "electronics", "in_stock": true }
+      ],
+      "total": 129,
+      "shipping_address": "301 Pine Rd, Denver, CO 80202",
+      "scenario": "above limit ($129 > $75) -> escalate (P3)"
+    },
+    {
+      "order_id": "A1049",
+      "customer_id": "c_alice",
+      "email": "alice@example.com",
+      "status": "delivered",
+      "placed_days_ago": 44,
+      "delivered_days_ago": 40,
+      "currency": "USD",
+      "items": [
+        { "sku": "VASE-05", "name": "Hand-blown glass vase", "qty": 1, "unit_price": 85, "category": "home_decor", "in_stock": true }
+      ],
+      "total": 85,
+      "shipping_address": "12 Harbor St, Portland, OR 97201",
+      "scenario": "outside 30-day window (40 days) -> deny (P1)"
+    },
+    {
+      "order_id": "A1050",
+      "customer_id": "c_carol",
+      "email": "carol@example.com",
+      "status": "delivered",
+      "placed_days_ago": 7,
+      "delivered_days_ago": 4,
+      "currency": "USD",
+      "items": [
+        { "sku": "HDPH-02", "name": "Over-ear headphones", "qty": 1, "unit_price": 129, "category": "electronics", "in_stock": true }
+      ],
+      "total": 129,
+      "shipping_address": "5 Lakeview Dr, Madison, WI 53703",
+      "scenario": "above limit ($129 > $75) -> escalate (P3)"
+    },
+    {
+      "order_id": "A1051",
+      "customer_id": "c_mallory",
+      "email": "mallory@example.com",
+      "status": "delivered",
+      "placed_days_ago": 4,
+      "delivered_days_ago": 1,
+      "currency": "USD",
+      "items": [
+        { "sku": "LAMP-03", "name": "Brass desk lamp", "qty": 1, "unit_price": 59, "category": "lighting", "in_stock": true }
+      ],
+      "total": 59,
+      "shipping_address": "88 Elm Ave, Austin, TX 78701",
+      "scenario": "replacement-first: lighting item in stock -> replacement (P4)"
+    },
+    {
+      "order_id": "A1061",
+      "customer_id": "c_dave",
+      "email": "dave@example.com",
+      "status": "delivered",
+      "placed_days_ago": 49,
+      "delivered_days_ago": 45,
+      "currency": "USD",
+      "items": [
+        { "sku": "LAMP-03", "name": "Brass desk lamp", "qty": 1, "unit_price": 59, "category": "lighting", "in_stock": true }
+      ],
+      "total": 59,
+      "shipping_address": "77 Birch Ln, Seattle, WA 98101",
+      "scenario": "outside 30-day window (45 days) -> deny (P1)"
+    },
+    {
+      "order_id": "A1077",
+      "customer_id": "c_erin",
+      "email": "erin@example.com",
+      "status": "delivered",
+      "placed_days_ago": 9,
+      "delivered_days_ago": 6,
+      "currency": "USD",
+      "items": [
+        { "sku": "TSHIRT-04", "name": "Organic cotton t-shirt", "qty": 2, "unit_price": 19, "category": "apparel", "in_stock": true }
+      ],
+      "total": 38,
+      "shipping_address": "19 Cedar Ct, Raleigh, NC 27601",
+      "scenario": "worn apparel -> non-returnable, deny (P6)"
+    }
+  ]
+}

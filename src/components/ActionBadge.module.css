@@ -1,0 +1,22 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--tone);
+  background: var(--tone-bg);
+  border-color: color-mix(in srgb, var(--tone) 45%, transparent);
+}
+.sm { padding: 3px 8px 3px 6px; font-size: var(--t-11); }
+.md { padding: 5px 10px 5px 8px; font-size: var(--t-12); }
+.lg { padding: 7px 14px 7px 11px; font-size: var(--t-13); letter-spacing: .01em; }
+
+.refund      { --tone: var(--good);   --tone-bg: var(--good-bg); }
+.replacement { --tone: var(--accent); --tone-bg: var(--accent-soft); }
+.escalated   { --tone: var(--warn);   --tone-bg: var(--warn-bg); }
+.denied      { --tone: var(--crit);   --tone-bg: var(--crit-bg); }
+.unknown     { --tone: var(--ink-2);  --tone-bg: var(--surface-2); }

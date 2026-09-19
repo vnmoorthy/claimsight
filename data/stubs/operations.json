@@ -1,0 +1,39 @@
+{
+  "_comment": "Canned responses for GET /operations/{op} (Memories.ai shape: {operation, kind, done, cancelled, resource, progress:{preprocess,index,derive,percent}, error}). Operation ids of the form op_stub_<epoch_ms> are synthesised by the upload stub and progress by elapsed time (preprocess -> index -> derive, done after MEMORIES_STUB_INDEX_SECONDS, default 6). Any other id resolves here by exact key, else `default`.",
+  "op_stub_done": {
+    "operation": "op_stub_done",
+    "kind": "ingest",
+    "done": true,
+    "cancelled": false,
+    "resource": "vid_stub_mug_alice",
+    "progress": { "preprocess": "done", "index": "done", "derive": "done", "percent": 100 },
+    "error": null
+  },
+  "op_stub_running": {
+    "operation": "op_stub_running",
+    "kind": "ingest",
+    "done": false,
+    "cancelled": false,
+    "resource": "vid_stub_mug_alice",
+    "progress": { "preprocess": "done", "index": "running", "derive": "pending", "percent": 45 },
+    "error": null
+  },
+  "op_stub_failed": {
+    "operation": "op_stub_failed",
+    "kind": "ingest",
+    "done": true,
+    "cancelled": false,
+    "resource": "vid_stub_broken",
+    "progress": { "preprocess": "done", "index": "failed", "derive": "pending", "percent": 30 },
+    "error": { "code": "index_failed", "message": "Stubbed indexing failure for rehearsal." }
+  },
+  "default": {
+    "operation": "op_stub_default",
+    "kind": "ingest",
+    "done": true,
+    "cancelled": false,
+    "resource": "vid_stub_mug_alice",
+    "progress": { "preprocess": "done", "index": "done", "derive": "done", "percent": 100 },
+    "error": null
+  }
+}

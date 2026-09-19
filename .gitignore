@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build outputs
+dist/
+
+# EdgeOne
+.edgeone/
+.codegraph
+
+# Environment variables (never commit real keys)
+.env
+agents-python/.env
+agents-python/chat/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Internal planning docs
+
+# AI assistant local instructions
+CLAUDE.md
+AGENTS.md
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+.tef_dist/*
+  
+# Deck renders (regenerate with docs/deck/build_deck.cjs)
+docs/deck/*.pdf
+docs/deck/*.jpg

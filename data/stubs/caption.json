@@ -1,0 +1,64 @@
+{
+  "_comment": "Canned responses for GET /videos/{id}/caption (Memories.ai shape: {segments:[{start,end,text}], aggregated}). Keyed by video_id; `default` for unknown ids.",
+  "vid_stub_mug_alice": {
+    "segments": [
+      { "start": 0, "end": 2, "text": "A hand lifts a white ceramic mug from a wooden table toward the camera." },
+      { "start": 2, "end": 5, "text": "Close-up of the mug rim: a chip on the rim with a thin crack in the glaze is clearly visible." },
+      { "start": 5, "end": 8, "text": "The mug is rotated; the handle and body are intact. A Northwind Home shipping box is in the background." }
+    ],
+    "aggregated": "A hand lifts a white ceramic mug from a wooden table toward the camera. Close-up of the mug rim: a chip on the rim with a thin crack in the glaze is clearly visible. The mug is rotated; the handle and body are intact. A Northwind Home shipping box is in the background."
+  },
+  "vid_stub_mug_mallory": {
+    "segments": [
+      { "start": 0, "end": 2, "text": "A hand lifts a white ceramic mug from a wooden table toward the camera." },
+      { "start": 2, "end": 5, "text": "Close-up of the mug rim: a chip on the rim with a thin crack in the glaze is clearly visible." },
+      { "start": 5, "end": 8, "text": "The mug is rotated; the handle and body are intact. A Northwind Home shipping box is in the background." }
+    ],
+    "aggregated": "A hand lifts a white ceramic mug from a wooden table toward the camera. Close-up of the mug rim: a chip on the rim with a thin crack in the glaze is clearly visible. The mug is rotated; the handle and body are intact. A Northwind Home shipping box is in the background."
+  },
+  "vid_stub_headphones_crack": {
+    "segments": [
+      { "start": 0, "end": 3, "text": "Black over-ear headphones on a desk; a person picks them up." },
+      { "start": 3, "end": 6, "text": "The headband is flexed and a crack in the plastic near the left hinge is visible." },
+      { "start": 6, "end": 9, "text": "The left ear cup wobbles loosely; the retail box is shown." }
+    ],
+    "aggregated": "Black over-ear headphones on a desk; a person picks them up. The headband is flexed and a crack in the plastic near the left hinge is visible. The left ear cup wobbles loosely; the retail box is shown."
+  },
+  "vid_stub_lamp_dent": {
+    "segments": [
+      { "start": 0, "end": 3, "text": "A brass desk lamp on a desk; close-up of a large dent on the left side of the shade." },
+      { "start": 3, "end": 7, "text": "The switch is pressed; the bulb flickers twice and stays off." },
+      { "start": 7, "end": 9, "text": "The base and cord are shown and appear intact." }
+    ],
+    "aggregated": "A brass desk lamp on a desk; close-up of a large dent on the left side of the shade. The switch is pressed; the bulb flickers twice and stays off. The base and cord are shown and appear intact."
+  },
+  "vid_stub_tshirt_worn": {
+    "segments": [
+      { "start": 0, "end": 3, "text": "A grey cotton t-shirt laid flat on a bed; the collar is stretched." },
+      { "start": 3, "end": 6, "text": "Close-up of a faint brown stain on the chest; the neck tag has been cut off." },
+      { "start": 6, "end": 8, "text": "Pilling under the arms is visible, consistent with wear and washing." }
+    ],
+    "aggregated": "A grey cotton t-shirt laid flat on a bed; the collar is stretched. Close-up of a faint brown stain on the chest; the neck tag has been cut off. Pilling under the arms is visible, consistent with wear and washing."
+  },
+  "vid_stub_vase_crack": {
+    "segments": [
+      { "start": 0, "end": 3, "text": "A tall glass vase on a countertop; a long crack runs from the base up the side." },
+      { "start": 3, "end": 7, "text": "Water is poured in and leaks from the crack onto the counter." },
+      { "start": 7, "end": 9, "text": "A shipping box with a crushed corner is shown." }
+    ],
+    "aggregated": "A tall glass vase on a countertop; a long crack runs from the base up the side. Water is poured in and leaks from the crack onto the counter. A shipping box with a crushed corner is shown."
+  },
+  "vid_stub_no_damage": {
+    "segments": [
+      { "start": 0, "end": 4, "text": "A white ceramic mug is rotated slowly on a kitchen table; rim, handle and body are shown." },
+      { "start": 4, "end": 7, "text": "No chips, cracks or marks are visible; the mug is placed back on the table." }
+    ],
+    "aggregated": "A white ceramic mug is rotated slowly on a kitchen table; rim, handle and body are shown. No chips, cracks or marks are visible; the mug is placed back on the table."
+  },
+  "default": {
+    "segments": [
+      { "start": 0, "end": 5, "text": "A household product is turned toward the camera on a table under poor lighting; no close-up of damage is captured." }
+    ],
+    "aggregated": "A household product is turned toward the camera on a table under poor lighting; no close-up of damage is captured."
+  }
+}

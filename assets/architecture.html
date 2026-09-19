@@ -1,0 +1,121 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+ html,body{margin:0;width:1600px;height:960px;background:#0f1320;overflow:hidden}
+ svg{font-family:'IBM Plex Sans',system-ui,sans-serif}
+ .box{fill:#171c2b;stroke:#2a3145;stroke-width:1.5}
+ .box.acc{stroke:#3987e5}
+ .box.tx{stroke:#2bc0a0}
+ .box.ext{fill:#141a2a;stroke:#3b4460;stroke-dasharray:6 4}
+ .t{fill:#e8ecf6;font-size:22px;font-weight:600}
+ .s{fill:#b3bbd1;font-size:16px}
+ .m{fill:#9dc1ff;font-family:'IBM Plex Mono',monospace;font-size:14px}
+ .lane{fill:#7f89a6;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.16em}
+ .arrow{stroke:#3987e5;stroke-width:2.5;fill:none;marker-end:url(#ah)}
+ .arrow.tx{stroke:#2bc0a0;marker-end:url(#ahg)}
+ .arrow.dim{stroke:#4b5573;marker-end:url(#ahd)}
+ .lbl{fill:#7f89a6;font-size:13px;font-family:'IBM Plex Mono',monospace}
+ .title{fill:#e8ecf6;font-size:30px;font-weight:600}
+ .sub{fill:#7f89a6;font-size:16px}
+</style></head><body>
+<svg width="1600" height="960" viewBox="0 0 1600 960">
+<defs>
+ <marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3987e5"/></marker>
+ <marker id="ahg" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2bc0a0"/></marker>
+ <marker id="ahd" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4b5573"/></marker>
+</defs>
+<text x="60" y="64" class="title">ClaimSight architecture</text>
+<text x="60" y="92" class="sub">Evidence video → policy decision → executed transaction, with every step traced and gated</text>
+
+<!-- lanes -->
+<text x="60" y="150" class="lane">CLIENT</text>
+<text x="60" y="430" class="lane">EDGEONE MAKERS (AGENT RUNTIME + CLOUD FUNCTIONS + STORAGE)</text>
+<text x="60" y="760" class="lane">CO-HOST SERVICES</text>
+<line x1="60" y1="160" x2="1540" y2="160" stroke="#2a3145"/>
+<line x1="60" y1="440" x2="1540" y2="440" stroke="#2a3145"/>
+<line x1="60" y1="770" x2="1540" y2="770" stroke="#2a3145"/>
+
+<!-- client -->
+<rect x="60" y="190" width="400" height="200" rx="14" class="box acc"/>
+<text x="84" y="226" class="t">React chat + Refund Desk</text>
+<text x="84" y="254" class="s">Vite app on Makers Pages · streaming SSE</text>
+<text x="84" y="282" class="m">attach evidence video · progress pill</text>
+<text x="84" y="306" class="m">Decision Card · lamps per tool call</text>
+<text x="84" y="330" class="m">/desk: queue, approve/deny, stats strip</text>
+<text x="84" y="366" class="s">Manager · Customer</text>
+
+<rect x="520" y="190" width="380" height="200" rx="14" class="box ext"/>
+<text x="544" y="226" class="t">Slack + WorkBuddy</text>
+<text x="544" y="254" class="s">Escalation ping via incoming webhook</text>
+<text x="544" y="282" class="m">Refund Desk skill (SKILL.md)</text>
+<text x="544" y="306" class="m">GET /claims?status=pending_review</text>
+<text x="544" y="330" class="m">POST /claims-decision</text>
+<text x="544" y="366" class="s">Daily .docx automation</text>
+
+<rect x="960" y="190" width="580" height="200" rx="14" class="box ext"/>
+<text x="984" y="226" class="t">AgentX trace-eval (self-hosted)</text>
+<text x="984" y="254" class="s">One trace per claim · golden dataset of 30 claims</text>
+<text x="984" y="282" class="m">OTLP/HTTP  ←  /agentx-emit</text>
+<text x="984" y="306" class="m">run.gate(fail_under=7.5, no_regression=True)</text>
+<text x="984" y="330" class="m">monitors: PII · secrets · prompt-injection</text>
+<text x="984" y="366" class="s">Deploy Certificate before every release</text>
+
+<!-- makers -->
+<rect x="60" y="470" width="520" height="260" rx="14" class="box acc"/>
+<text x="84" y="506" class="t">Agent  POST /claims</text>
+<text x="84" y="534" class="s">Session mode · Makers-Conversation-Id · Claude Agent SDK</text>
+<text x="84" y="562" class="m">tools: lookup_order · get_policy</text>
+<text x="84" y="586" class="m">       inspect_evidence · fraud_check</text>
+<text x="84" y="610" class="m">       execute_refund · create_replacement</text>
+<text x="84" y="634" class="m">       escalate · record_decision</text>
+<text x="84" y="668" class="s">Deterministic policy engine fallback · no shell, no browser</text>
+<text x="84" y="700" class="s">Model via AI Gateway: @makers/deepseek-v4-pro</text>
+
+<rect x="620" y="470" width="480" height="260" rx="14" class="box tx"/>
+<text x="644" y="506" class="t">Cloud functions</text>
+<text x="644" y="534" class="s">Stateless · server-side policy enforcement</text>
+<text x="644" y="562" class="m">/orders-lookup   /refund   /replacement</text>
+<text x="644" y="586" class="m">/claims   /claims-decision   /stats</text>
+<text x="644" y="610" class="m">/upload-evidence   /evidence-status</text>
+<text x="644" y="634" class="m">/seed   /agentx-emit   /claims-record</text>
+<text x="644" y="668" class="s">Refund limits re-checked here: the model cannot exceed policy</text>
+<text x="644" y="700" class="s">Secrets live only in this layer</text>
+
+<rect x="1140" y="470" width="400" height="260" rx="14" class="box"/>
+<text x="1164" y="506" class="t">Storage</text>
+<text x="1164" y="534" class="s">Blob (strong consistency) · memory fallback</text>
+<text x="1164" y="562" class="m">orders/&lt;id&gt;.json   policy.json</text>
+<text x="1164" y="586" class="m">claims/&lt;id&gt;.json   ledger/&lt;txn&gt;.json</text>
+<text x="1164" y="610" class="m">video_index/&lt;vid&gt;.json   counters.json</text>
+<text x="1164" y="668" class="s">No vector DB: policy and orders are structured JSON</text>
+
+<!-- co-hosts -->
+<rect x="60" y="800" width="680" height="130" rx="14" class="box ext"/>
+<text x="84" y="836" class="t">Memories.ai Video Datalake</text>
+<text x="84" y="864" class="m">POST /videos (multipart) → operation → summary · caption · frames</text>
+<text x="84" y="888" class="m">POST /search {query_images:[frame]} → cross-account fraud twin</text>
+<text x="84" y="914" class="s">Live path: open_stream (pull) + SSE subscribe for on-stage captions</text>
+
+<rect x="790" y="800" width="340" height="130" rx="14" class="box ext"/>
+<text x="814" y="836" class="t">Makers AI Gateway</text>
+<text x="814" y="864" class="m">ai-gateway.edgeone.link/v1</text>
+<text x="814" y="888" class="s">OpenAI-compatible · switch model by name</text>
+<text x="814" y="914" class="s">hy3 · deepseek-v4 · kimi-k2.6 · minimax-m3</text>
+
+<rect x="1180" y="800" width="360" height="130" rx="14" class="box ext"/>
+<text x="1204" y="836" class="t">VeloDB + AWS</text>
+<text x="1204" y="864" class="m">claims_events · dashboard.sql</text>
+<text x="1204" y="888" class="s">auto-approval by hour · fraud clusters · p95</text>
+<text x="1204" y="914" class="s">S3 evidence archive · EC2 for AgentX (prod)</text>
+
+<!-- arrows -->
+<path d="M260,390 L260,470" class="arrow"/><text x="272" y="462" class="lbl">SSE chat · uploads</text>
+<path d="M460,300 L520,300" class="arrow dim"/><text x="466" y="290" class="lbl">ping</text>
+<path d="M580,600 L620,600" class="arrow tx"/><text x="584" y="590" class="lbl">fetch</text>
+<path d="M1100,600 L1140,600" class="arrow"/>
+<path d="M860,470 L860,440 L1240,440 L1240,390" class="arrow dim"/><text x="1000" y="432" class="lbl">OTLP trace per claim</text>
+<path d="M710,390 L710,470" class="arrow dim"/><text x="722" y="432" class="lbl">approve / deny</text>
+<path d="M320,730 L320,800" class="arrow"/><text x="332" y="770" class="lbl">summary · caption · image search</text>
+<path d="M960,730 L960,800" class="arrow"/><text x="972" y="770" class="lbl">chat completions</text>
+<path d="M1340,730 L1340,800" class="arrow dim"/><text x="1352" y="770" class="lbl">events export</text>
+</svg></body></html>

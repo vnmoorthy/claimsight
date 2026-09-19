@@ -1,0 +1,16 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cloudFunctions": {
+    "nodejs": {
+      "includeFiles": []
+    }
+  },
+  "agents": {
+    "timeout": 300,
+    "framework": "claude-agent-sdk",
+    "sandbox": {
+      "timeout": 300
+    }
+  }
+}

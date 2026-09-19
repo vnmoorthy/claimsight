@@ -1,0 +1,5 @@
+# ClaimSight evaluation / monitoring harness (eval/) and the VeloDB loader (velodb/load.py)
+# Install into a venv:  python3 -m venv .venv && .venv/bin/pip install -r eval/requirements.txt
+agentx-python==0.8.28        # AgentX SDK: evaluations, monitor, tracer; ships the agentx-trace-eval launcher
+requests>=2.31,<3
+pymysql>=1.1,<3              # velodb/load.py (VeloDB Cloud speaks the MySQL protocol)

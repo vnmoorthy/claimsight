@@ -1,0 +1,27 @@
+{
+  "_comment": "Canned responses for GET /videos/{id}/summary (Memories.ai Video Datalake shape: {summary}). Keyed by video_id; `default` is used for unknown ids.",
+  "vid_stub_mug_alice": {
+    "summary": "A handheld clip shot on a wooden kitchen table. A white ceramic mug is lifted toward the camera and slowly rotated. At about 0:03 the rim is shown close-up and a clear chip is visible on the rim with a small crack running down the glaze. The mug is otherwise clean and unused; the original Northwind Home shipping box and packing paper are visible in the background."
+  },
+  "vid_stub_mug_mallory": {
+    "summary": "A handheld clip shot on a wooden kitchen table. A white ceramic mug is lifted toward the camera and slowly rotated. At about 0:03 the rim is shown close-up and a clear chip is visible on the rim with a small crack running down the glaze. The mug is otherwise clean and unused; the original Northwind Home shipping box and packing paper are visible in the background."
+  },
+  "vid_stub_headphones_crack": {
+    "summary": "A pair of black over-ear headphones rests on a desk. The person picks them up and flexes the headband; at about 0:04 the plastic headband shows a visible crack near the left hinge, and at 0:07 the left ear cup wobbles loosely. The retail box is shown at the end of the clip."
+  },
+  "vid_stub_lamp_dent": {
+    "summary": "A brass desk lamp on a home office desk. The shade has a large dent on its left side, shown close-up at about 0:02. When the switch is pressed at 0:06 the bulb flickers twice and stays off. The lamp base and cord appear intact."
+  },
+  "vid_stub_tshirt_worn": {
+    "summary": "A grey cotton t-shirt is laid on a bed. The collar is stretched and there is a faint coffee-coloured stain on the chest, shown at about 0:03. The tag has been removed and the fabric shows pilling under the arms, consistent with the shirt having been worn and washed."
+  },
+  "vid_stub_vase_crack": {
+    "summary": "A tall hand-blown glass vase stands on a countertop. At about 0:02 the camera moves close to the base and a long crack running from the base up the side is visible; at 0:05 water poured into the vase leaks from the crack onto the counter. The shipping box with a crushed corner is shown at 0:08."
+  },
+  "vid_stub_no_damage": {
+    "summary": "A white ceramic mug on a kitchen table is rotated slowly in front of the camera. The rim, handle and body are shown from all sides; no chips, cracks or marks are visible. The clip ends with the mug placed back on the table."
+  },
+  "default": {
+    "summary": "A short handheld clip of a household product on a table. The customer turns the item toward the camera; no clear close-up of damage is captured and the lighting is poor."
+  }
+}

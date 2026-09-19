@@ -1,0 +1,8 @@
+{
+  "_comment": "Seeded video_index:* reverse-lookup entries, loaded only when Memories.ai is stubbed. They make the fraud-twin rehearsal work before any claim has been recorded: a search from A1043's footage hits vid_stub_mug_alice, which resolves here to customer c_alice (a different account) -> P5 escalation.",
+  "vid_stub_mug_alice": {
+    "claim_id": "clm_seed_alice_mug",
+    "order_id": "A1042",
+    "customer_id": "c_alice"
+  }
+}

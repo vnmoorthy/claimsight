@@ -1,0 +1,61 @@
+{
+  "_comment": "Canned responses for POST /search with query_images=[frame_url], targets=[frame_embedding] (Memories.ai shape: {results:[{ref, video_id, target, score, start, end, snippet, thumbnail_url}], next_cursor, hint}). Keyed by the video id embedded in the query frame URL (…/frames/<video_id>/…). The querying video's own hit is always returned with score 1.0 so the same-video filter is exercised; low-score hits exercise the threshold. `default` for unknown ids.",
+  "vid_stub_mug_alice": {
+    "results": [
+      { "ref": "vid_stub_mug_alice@2.0-5.0", "video_id": "vid_stub_mug_alice", "target": "frame_embedding", "score": 1.0, "start": 2, "end": 5, "snippet": "Close-up of the mug rim with a chip", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_mug_alice/3.jpg" },
+      { "ref": "vid_stub_no_damage@0.0-4.0", "video_id": "vid_stub_no_damage", "target": "frame_embedding", "score": 0.41, "start": 0, "end": 4, "snippet": "A white ceramic mug rotated on a kitchen table", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_no_damage/0.jpg" }
+    ],
+    "next_cursor": null,
+    "hint": null
+  },
+  "vid_stub_mug_mallory": {
+    "results": [
+      { "ref": "vid_stub_mug_mallory@2.0-5.0", "video_id": "vid_stub_mug_mallory", "target": "frame_embedding", "score": 1.0, "start": 2, "end": 5, "snippet": "Close-up of the mug rim with a chip", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_mug_mallory/3.jpg" },
+      { "ref": "vid_stub_mug_alice@2.0-5.0", "video_id": "vid_stub_mug_alice", "target": "frame_embedding", "score": 0.93, "start": 2, "end": 5, "snippet": "Close-up of the mug rim with a chip", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_mug_alice/3.jpg" },
+      { "ref": "vid_stub_no_damage@0.0-4.0", "video_id": "vid_stub_no_damage", "target": "frame_embedding", "score": 0.44, "start": 0, "end": 4, "snippet": "A white ceramic mug rotated on a kitchen table", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_no_damage/0.jpg" }
+    ],
+    "next_cursor": null,
+    "hint": null
+  },
+  "vid_stub_headphones_crack": {
+    "results": [
+      { "ref": "vid_stub_headphones_crack@3.0-6.0", "video_id": "vid_stub_headphones_crack", "target": "frame_embedding", "score": 1.0, "start": 3, "end": 6, "snippet": "Headband flexed showing a crack", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_headphones_crack/4.jpg" }
+    ],
+    "next_cursor": null,
+    "hint": null
+  },
+  "vid_stub_lamp_dent": {
+    "results": [
+      { "ref": "vid_stub_lamp_dent@0.0-3.0", "video_id": "vid_stub_lamp_dent", "target": "frame_embedding", "score": 1.0, "start": 0, "end": 3, "snippet": "Dent on the lamp shade", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_lamp_dent/2.jpg" }
+    ],
+    "next_cursor": null,
+    "hint": null
+  },
+  "vid_stub_tshirt_worn": {
+    "results": [
+      { "ref": "vid_stub_tshirt_worn@0.0-3.0", "video_id": "vid_stub_tshirt_worn", "target": "frame_embedding", "score": 1.0, "start": 0, "end": 3, "snippet": "Grey t-shirt on a bed", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_tshirt_worn/3.jpg" }
+    ],
+    "next_cursor": null,
+    "hint": null
+  },
+  "vid_stub_vase_crack": {
+    "results": [
+      { "ref": "vid_stub_vase_crack@0.0-3.0", "video_id": "vid_stub_vase_crack", "target": "frame_embedding", "score": 1.0, "start": 0, "end": 3, "snippet": "Crack running up the vase", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_vase_crack/2.jpg" }
+    ],
+    "next_cursor": null,
+    "hint": null
+  },
+  "vid_stub_no_damage": {
+    "results": [
+      { "ref": "vid_stub_no_damage@0.0-4.0", "video_id": "vid_stub_no_damage", "target": "frame_embedding", "score": 1.0, "start": 0, "end": 4, "snippet": "A white ceramic mug rotated on a kitchen table", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_no_damage/0.jpg" },
+      { "ref": "vid_stub_mug_alice@0.0-2.0", "video_id": "vid_stub_mug_alice", "target": "frame_embedding", "score": 0.39, "start": 0, "end": 2, "snippet": "A hand lifts a white ceramic mug", "thumbnail_url": "https://stub.memories.local/frames/vid_stub_mug_alice/0.jpg" }
+    ],
+    "next_cursor": null,
+    "hint": null
+  },
+  "default": {
+    "results": [],
+    "next_cursor": null,
+    "hint": "No similar frames found in this collection."
+  }
+}

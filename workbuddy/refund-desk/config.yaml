@@ -1,0 +1,72 @@
+# WorkBuddy skill manifest for the ClaimSight Refund Desk.
+# Pair with SKILL.md in this folder. Field names follow the common SKILL.md/manifest convention;
+# if your WorkBuddy build expects different keys, keep the values and rename the keys.
+name: refund-desk
+version: 1.0.0
+description: >-
+  Review ClaimSight claims waiting for a human (pending_review), apply the manager's
+  approve/deny decisions through the ClaimSight API, and post a compact summary to Slack.
+  Includes the daily 9:00 claims digest (.docx).
+author: ClaimSight / Northwind Home
+entry: SKILL.md
+language: en
+
+triggers:
+  - refund desk
+  - open the refund desk
+  - claims queue
+  - what's waiting for approval
+  - anything pending
+  - pending claims
+  - approve claims
+  - deny claims
+  - clear the queue
+  - yesterday's claims
+  - claims digest
+  - claims report
+
+# Values the skill reads. Set CLAIMSIGHT_URL to the local dev server or the deployed Makers URL.
+env:
+  CLAIMSIGHT_URL: "http://localhost:8088"
+  CLAIMSIGHT_UI_URL: ""        # optional; defaults to CLAIMSIGHT_URL (the /desk page lives there)
+
+# Capabilities the skill needs from WorkBuddy.
+tools:
+  - http          # GET /claims, POST /claims/decision, GET /stats
+  - slack         # post the summary to the connected channel
+  - documents     # write the daily .docx digest
+
+endpoints:
+  list_pending: "GET {CLAIMSIGHT_URL}/claims?status=pending_review"
+  decide:       "POST {CLAIMSIGHT_URL}/claims/decision"   # {"claim_id","decision":"approve"|"deny","note"}
+  stats:        "GET {CLAIMSIGHT_URL}/stats"
+  all_claims:   "GET {CLAIMSIGHT_URL}/claims"
+  desk_ui:      "{CLAIMSIGHT_UI_URL}/desk"
+
+slack:
+  channel: "#refund-desk"
+  post_when_empty: true        # scheduled runs post a one-liner even when nothing is pending
+
+# Guardrails the assistant must respect (mirrored in SKILL.md).
+policy:
+  never_decide_without_manager: true
+  confirm_before_approving_fraud_flagged: true
+  require_note_on_deny: true
+  quote_txn_id_on_approve: true
+
+# Optional: ClaimSight as an MCP server (see ../README.md). Leave disabled unless the backend exposes one.
+mcp:
+  enabled: false
+  server_name: claimsight
+  tools: [list_claims, decide_claim, get_stats]
+
+automations:
+  - name: daily-claims-digest
+    title: "Daily 9:00 claims digest"
+    schedule: "0 9 * * *"      # every day at 09:00 local time (use "0 9 * * 1-5" for weekdays)
+    skill: refund-desk
+    output: docx
+    prompt: >-
+      Summarize yesterday's ClaimSight claims into a .docx: auto-approval rate, refunded $, fraud flags,
+      top damage types. Use GET {CLAIMSIGHT_URL}/stats and GET {CLAIMSIGHT_URL}/claims, keep claims created
+      yesterday, save ClaimSight-daily-<YYYY-MM-DD>.docx, and post the headline numbers plus the file to #refund-desk.

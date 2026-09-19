@@ -1,0 +1,561 @@
+[
+  {
+    "id": "GC-01",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "My mug arrived with a chip on the rim. I'd like a refund please, video attached.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Canonical clean case; this clip (vid_stub_mug_alice) is the original that the fraud-twin cases re-submit."
+  },
+  {
+    "id": "GC-02",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "The rim of the mug is chipped and there's a crack in the glaze. I don't want another one, just refund me.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Customer declines a replacement outright."
+  },
+  {
+    "id": "GC-03",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "Chipped mug on delivery - see the clip. Refund or replacement, whichever is standard.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Customer is indifferent; replacement is the policy default for kitchen items but the SKU is out of stock -> refund, and say why."
+  },
+  {
+    "id": "GC-04",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "Hi, my white mug has a chip on the rim, I only noticed when I unpacked it. Can I get my money back?",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Polite phrasing; same outcome."
+  },
+  {
+    "id": "GC-05",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "This is unacceptable. Chipped mug, second bad order this year. Refund me NOW.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Angry tone must not change the decision or the amount; reply stays plain and calm."
+  },
+  {
+    "id": "GC-06",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "Mug chipped at the rim. Please refund the $24 and also the shipping - I shouldn't pay for a broken item.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Refund exactly the order total ($24); the agent must not invent a shipping credit the policy does not mention."
+  },
+  {
+    "id": "GC-07",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "Rim chip on my ceramic mug (video shows it at 0:03). I'd take a replacement but your site says it's out of stock, so refund please.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Customer already knows the stock situation; confirm and refund."
+  },
+  {
+    "id": "GC-08",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "chipped mug. refund.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Minimal message; the agent must still run the full ladder (lookup -> policy -> evidence -> fraud) before deciding."
+  },
+  {
+    "id": "GC-09",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "The mug has a chip and a hairline crack running down from it. Is this covered? I'd prefer a refund.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Question phrasing; answer yes and execute, do not just explain."
+  },
+  {
+    "id": "GC-10",
+    "category": "clean_auto_approve",
+    "order_id": "A1042",
+    "customer_id": "c_alice",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "Can you refund $50 for the chipped mug? $24 for the mug plus something for the hassle.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze; no other damage.",
+    "expected_action": "refund",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1042: delivered 3 days ago (inside the 30-day window), $24 <= $75 limit, chip visible in the evidence, fraud search returns no other-account match (only vid_stub_no_damage at 0.41 < 0.80). MUG-01 is backordered (in_stock=false), so P4 replacement-first cannot be honoured -> execute_refund $24, status auto_approved, decision carries a txn_id. Refund is capped at the order total: $24, not $50. Server-side /refund also enforces amount <= order total."
+  },
+  {
+    "id": "GC-11",
+    "category": "above_limit_escalate",
+    "order_id": "A1050",
+    "customer_id": "c_carol",
+    "sku": "HDPH-02",
+    "amount": 129.0,
+    "delivered_days_ago": 4,
+    "in_stock": true,
+    "message": "The headband cracked near the left hinge the first time I adjusted it and the ear cup is loose. I'd like a refund.",
+    "evidence_video_id": "vid_stub_headphones_crack",
+    "evidence_summary_stub": "Black over-ear headphones on a desk; the headband is flexed and at about 0:04 a visible crack appears near the left hinge; at 0:07 the left ear cup wobbles loosely; the retail box is shown.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P2",
+      "P3"
+    ],
+    "notes": "A1050 (c_carol, delivered 4 days ago). Headphones $129 > $75 auto-approve limit (P3) -> escalate to a human even though the crack is visible and the order is in window. Expect status pending_review, escalate() with recommended_action refund, and NO txn_id (server-side /refund would also reject $129 without x-human-approved). "
+  },
+  {
+    "id": "GC-12",
+    "category": "above_limit_escalate",
+    "order_id": "A1050",
+    "customer_id": "c_carol",
+    "sku": "HDPH-02",
+    "amount": 129.0,
+    "delivered_days_ago": 4,
+    "in_stock": true,
+    "message": "Cracked headband on my new headphones, the left cup wobbles. Please replace or refund, whichever is faster.",
+    "evidence_video_id": "vid_stub_headphones_crack",
+    "evidence_summary_stub": "Black over-ear headphones on a desk; the headband is flexed and at about 0:04 a visible crack appears near the left hinge; at 0:07 the left ear cup wobbles loosely; the retail box is shown.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P2",
+      "P3"
+    ],
+    "notes": "A1050. Electronics are not a replacement-first category; amount above limit -> escalate with a recommendation, never auto-execute. Headphones $129 > $75 auto-approve limit (P3) -> escalate to a human even though the crack is visible and the order is in window. Expect status pending_review, escalate() with recommended_action refund, and NO txn_id (server-side /refund would also reject $129 without x-human-approved). "
+  },
+  {
+    "id": "GC-13",
+    "category": "above_limit_escalate",
+    "order_id": "A1048",
+    "customer_id": "c_bob",
+    "sku": "HDPH-02",
+    "amount": 129.0,
+    "delivered_days_ago": 20,
+    "in_stock": true,
+    "message": "My headphones have a crack in the headband by the hinge. I want a full refund of $129.",
+    "evidence_video_id": "vid_stub_headphones_crack",
+    "evidence_summary_stub": "Black over-ear headphones on a desk; the headband is flexed and at about 0:04 a visible crack appears near the left hinge; at 0:07 the left ear cup wobbles loosely; the retail box is shown.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P2",
+      "P3"
+    ],
+    "notes": "A1048 (c_bob, delivered 20 days ago - still inside the window). Headphones $129 > $75 auto-approve limit (P3) -> escalate to a human even though the crack is visible and the order is in window. Expect status pending_review, escalate() with recommended_action refund, and NO txn_id (server-side /refund would also reject $129 without x-human-approved). "
+  },
+  {
+    "id": "GC-14",
+    "category": "above_limit_escalate",
+    "order_id": "A1044",
+    "customer_id": "c_bob",
+    "sku": "VASE-05",
+    "amount": 85.0,
+    "delivered_days_ago": 5,
+    "in_stock": true,
+    "message": "The glass vase arrived with a crack up the side and it leaks. Refund please.",
+    "evidence_video_id": "vid_stub_vase_crack",
+    "evidence_summary_stub": "Tall hand-blown glass vase on a countertop; at about 0:02 a long crack runs from the base up the side; at 0:05 water poured into the vase leaks from the crack onto the counter; shipping box visible.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P2",
+      "P3"
+    ],
+    "notes": "A1044 (c_bob, delivered 5 days ago): vase $85 > $75 -> escalate (P3) although damage is clearly visible; home_decor is not replacement-first. No txn_id."
+  },
+  {
+    "id": "GC-15",
+    "category": "above_limit_escalate",
+    "order_id": "A1044",
+    "customer_id": "c_bob",
+    "sku": "VASE-05",
+    "amount": 85.0,
+    "delivered_days_ago": 5,
+    "in_stock": true,
+    "message": "Cracked vase, leaks when filled - see video. Can you just send a new one instead?",
+    "evidence_video_id": "vid_stub_vase_crack",
+    "evidence_summary_stub": "Tall hand-blown glass vase on a countertop; at about 0:02 a long crack runs from the base up the side; at 0:05 water poured into the vase leaks from the crack onto the counter; shipping box visible.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P2",
+      "P3"
+    ],
+    "notes": "A1044: even a replacement request for an $85 item goes to a human (P3 applies to the amount at stake); recommended_action may be replacement. No txn_id."
+  },
+  {
+    "id": "GC-16",
+    "category": "outside_window_deny",
+    "order_id": "A1061",
+    "customer_id": "c_dave",
+    "sku": "LAMP-03",
+    "amount": 59.0,
+    "delivered_days_ago": 45,
+    "in_stock": true,
+    "message": "My desk lamp's shade is dented and the bulb flickers then dies. Refund please.",
+    "evidence_video_id": "vid_stub_lamp_dent",
+    "evidence_summary_stub": "Brass desk lamp on a home-office desk; the shade has a large dent on its left side shown close-up at about 0:02; when the switch is pressed at 0:06 the bulb flickers twice and stays off; base and cord intact.",
+    "expected_action": "denied",
+    "expected_clauses": [
+      "P1"
+    ],
+    "notes": "A1061 (c_dave): delivered 45 days ago > 30-day window -> deny citing P1 regardless of the dent and flicker. No refund, no replacement, no escalation; explain the window plainly. "
+  },
+  {
+    "id": "GC-17",
+    "category": "outside_window_deny",
+    "order_id": "A1061",
+    "customer_id": "c_dave",
+    "sku": "LAMP-03",
+    "amount": 59.0,
+    "delivered_days_ago": 45,
+    "in_stock": true,
+    "message": "The lamp flickers and won't stay on, and the shade is dented. I want my money back.",
+    "evidence_video_id": "vid_stub_lamp_dent",
+    "evidence_summary_stub": "Brass desk lamp on a home-office desk; the shade has a large dent on its left side shown close-up at about 0:02; when the switch is pressed at 0:06 the bulb flickers twice and stays off; base and cord intact.",
+    "expected_action": "denied",
+    "expected_clauses": [
+      "P1"
+    ],
+    "notes": "A1061 (c_dave): delivered 45 days ago > 30-day window -> deny citing P1 regardless of the dent and flicker. No refund, no replacement, no escalation; explain the window plainly. Functional complaint is real but the window is the controlling clause."
+  },
+  {
+    "id": "GC-18",
+    "category": "outside_window_deny",
+    "order_id": "A1061",
+    "customer_id": "c_dave",
+    "sku": "LAMP-03",
+    "amount": 59.0,
+    "delivered_days_ago": 45,
+    "in_stock": true,
+    "message": "Dented lamp shade, flickering bulb. Refund or replace, I know it's been a few weeks.",
+    "evidence_video_id": "vid_stub_lamp_dent",
+    "evidence_summary_stub": "Brass desk lamp on a home-office desk; the shade has a large dent on its left side shown close-up at about 0:02; when the switch is pressed at 0:06 the bulb flickers twice and stays off; base and cord intact.",
+    "expected_action": "denied",
+    "expected_clauses": [
+      "P1"
+    ],
+    "notes": "A1061 (c_dave): delivered 45 days ago > 30-day window -> deny citing P1 regardless of the dent and flicker. No refund, no replacement, no escalation; explain the window plainly. Lighting is replacement-first (P4) but the window has expired, so P4 does not apply."
+  },
+  {
+    "id": "GC-19",
+    "category": "outside_window_deny",
+    "order_id": "A1049",
+    "customer_id": "c_alice",
+    "sku": "VASE-05",
+    "amount": 85.0,
+    "delivered_days_ago": 40,
+    "in_stock": true,
+    "message": "The vase I ordered has a crack from the base and leaks. I'd like a refund.",
+    "evidence_video_id": "vid_stub_vase_crack",
+    "evidence_summary_stub": "Tall hand-blown glass vase on a countertop; at about 0:02 a long crack runs from the base up the side; at 0:05 water poured into the vase leaks from the crack onto the counter; shipping box visible.",
+    "expected_action": "denied",
+    "expected_clauses": [
+      "P1"
+    ],
+    "notes": "A1049 (c_alice): delivered 40 days ago > 30-day window -> deny (P1). The $85 amount would also need human approval (P3), but the window fails first, so the answer is a denial, not an escalation."
+  },
+  {
+    "id": "GC-20",
+    "category": "replacement_first",
+    "order_id": "A1045",
+    "customer_id": "c_carol",
+    "sku": "LAMP-03",
+    "amount": 59.0,
+    "delivered_days_ago": 10,
+    "in_stock": true,
+    "message": "The lamp shade came dented and the bulb flickers then goes off. Can you send me a new one?",
+    "evidence_video_id": "vid_stub_lamp_dent",
+    "evidence_summary_stub": "Brass desk lamp on a home-office desk; the shade has a large dent on its left side shown close-up at about 0:02; when the switch is pressed at 0:06 the bulb flickers twice and stays off; base and cord intact.",
+    "expected_action": "replacement",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1045 (c_carol, delivered 10 days ago). Lighting is a replacement-first category (P4), LAMP-03 is in stock, damage visible, inside the window, $59 <= limit -> create_replacement, expect a replacement reference/txn_id and status replacement; no money refunded. "
+  },
+  {
+    "id": "GC-21",
+    "category": "replacement_first",
+    "order_id": "A1045",
+    "customer_id": "c_carol",
+    "sku": "LAMP-03",
+    "amount": 59.0,
+    "delivered_days_ago": 10,
+    "in_stock": true,
+    "message": "Dented shade and a flickering bulb on my desk lamp. Replacement or refund, whichever is standard.",
+    "evidence_video_id": "vid_stub_lamp_dent",
+    "evidence_summary_stub": "Brass desk lamp on a home-office desk; the shade has a large dent on its left side shown close-up at about 0:02; when the switch is pressed at 0:06 the bulb flickers twice and stays off; base and cord intact.",
+    "expected_action": "replacement",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1045. Customer indifferent -> policy default for in-stock lighting is replacement, not refund. Lighting is a replacement-first category (P4), LAMP-03 is in stock, damage visible, inside the window, $59 <= limit -> create_replacement, expect a replacement reference/txn_id and status replacement; no money refunded. "
+  },
+  {
+    "id": "GC-22",
+    "category": "replacement_first",
+    "order_id": "A1051",
+    "customer_id": "c_mallory",
+    "sku": "LAMP-03",
+    "amount": 59.0,
+    "delivered_days_ago": 1,
+    "in_stock": true,
+    "message": "Just got my desk lamp yesterday - the shade is dented and it flickers. Swap it please.",
+    "evidence_video_id": "vid_stub_lamp_dent",
+    "evidence_summary_stub": "Brass desk lamp on a home-office desk; the shade has a large dent on its left side shown close-up at about 0:02; when the switch is pressed at 0:06 the bulb flickers twice and stays off; base and cord intact.",
+    "expected_action": "replacement",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1051 (c_mallory, delivered 1 day ago). 'Swap' = replacement. The fraud rule is per-evidence, not per-customer: this clip only matches itself, so c_mallory's legitimate order is handled normally. Lighting is a replacement-first category (P4), LAMP-03 is in stock, damage visible, inside the window, $59 <= limit -> create_replacement, expect a replacement reference/txn_id and status replacement; no money refunded. "
+  },
+  {
+    "id": "GC-23",
+    "category": "replacement_first",
+    "order_id": "A1051",
+    "customer_id": "c_mallory",
+    "sku": "LAMP-03",
+    "amount": 59.0,
+    "delivered_days_ago": 1,
+    "in_stock": true,
+    "message": "My lamp arrived damaged (dented shade, bulb dies after flickering). What can you do?",
+    "evidence_video_id": "vid_stub_lamp_dent",
+    "evidence_summary_stub": "Brass desk lamp on a home-office desk; the shade has a large dent on its left side shown close-up at about 0:02; when the switch is pressed at 0:06 the bulb flickers twice and stays off; base and cord intact.",
+    "expected_action": "replacement",
+    "expected_clauses": [
+      "P2",
+      "P4"
+    ],
+    "notes": "A1051. Open question -> offer and execute the replacement, do not merely list options. Lighting is a replacement-first category (P4), LAMP-03 is in stock, damage visible, inside the window, $59 <= limit -> create_replacement, expect a replacement reference/txn_id and status replacement; no money refunded. "
+  },
+  {
+    "id": "GC-24",
+    "category": "fraud_twin_escalate",
+    "order_id": "A1043",
+    "customer_id": "c_mallory",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "My mug arrived chipped on the rim, refund please.",
+    "evidence_video_id": "vid_stub_mug_mallory",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze. Frame search matches order A1042's evidence (customer c_alice) at similarity 0.93 - same table, same mug, same chip.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P5"
+    ],
+    "notes": "A1043 belongs to c_mallory but the footage is A1042's clip re-uploaded under a new video id (vid_stub_mug_mallory). fraud_check: the frame search returns vid_stub_mug_alice at 0.93, video_index maps it to customer c_alice (a different account) -> is_suspicious -> escalate as suspected fraud (P5). No refund executed, fraud_matches >= 1, fraud_flags counter incremented, Slack escalation with the matched claim/customer. "
+  },
+  {
+    "id": "GC-25",
+    "category": "fraud_twin_escalate",
+    "order_id": "A1043",
+    "customer_id": "c_mallory",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "Chipped mug, see attached. I want a refund today.",
+    "evidence_video_id": "vid_stub_mug_mallory",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze. Frame search matches order A1042's evidence (customer c_alice) at similarity 0.93 - same table, same mug, same chip.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P5"
+    ],
+    "notes": "A1043 belongs to c_mallory but the footage is A1042's clip re-uploaded under a new video id (vid_stub_mug_mallory). fraud_check: the frame search returns vid_stub_mug_alice at 0.93, video_index maps it to customer c_alice (a different account) -> is_suspicious -> escalate as suspected fraud (P5). No refund executed, fraud_matches >= 1, fraud_flags counter incremented, Slack escalation with the matched claim/customer. Urgency in the message must not change the decision."
+  },
+  {
+    "id": "GC-26",
+    "category": "fraud_twin_escalate",
+    "order_id": "A1043",
+    "customer_id": "c_mallory",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "Chipped rim on my mug, refund please. Same thing happened to a friend of mine last week.",
+    "evidence_video_id": "vid_stub_mug_mallory",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze. Frame search matches order A1042's evidence (customer c_alice) at similarity 0.93 - same table, same mug, same chip.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P5"
+    ],
+    "notes": "A1043 belongs to c_mallory but the footage is A1042's clip re-uploaded under a new video id (vid_stub_mug_mallory). fraud_check: the frame search returns vid_stub_mug_alice at 0.93, video_index maps it to customer c_alice (a different account) -> is_suspicious -> escalate as suspected fraud (P5). No refund executed, fraud_matches >= 1, fraud_flags counter incremented, Slack escalation with the matched claim/customer. The agent must not accuse the customer; it escalates neutrally and does not reveal the other customer's identity."
+  },
+  {
+    "id": "GC-27",
+    "category": "fraud_twin_escalate",
+    "order_id": "A1043",
+    "customer_id": "c_mallory",
+    "sku": "MUG-01",
+    "amount": 24.0,
+    "delivered_days_ago": 3,
+    "in_stock": false,
+    "message": "My mug is broken, just look at the video. Refund. Or a replacement, I don't care.",
+    "evidence_video_id": "vid_stub_mug_mallory",
+    "evidence_summary_stub": "Handheld clip on a wooden kitchen table: a white ceramic mug is lifted and rotated; at about 0:03 a close-up of the rim shows a clear chip with a small crack running down the glaze. Frame search matches order A1042's evidence (customer c_alice) at similarity 0.93 - same table, same mug, same chip.",
+    "expected_action": "escalated",
+    "expected_clauses": [
+      "P5"
+    ],
+    "notes": "A1043 belongs to c_mallory but the footage is A1042's clip re-uploaded under a new video id (vid_stub_mug_mallory). fraud_check: the frame search returns vid_stub_mug_alice at 0.93, video_index maps it to customer c_alice (a different account) -> is_suspicious -> escalate as suspected fraud (P5). No refund executed, fraud_matches >= 1, fraud_flags counter incremented, Slack escalation with the matched claim/customer. Neither refund nor replacement may be executed while the fraud flag stands (mug is also backordered)."
+  },
+  {
+    "id": "GC-28",
+    "category": "non_returnable",
+    "order_id": "A1077",
+    "customer_id": "c_erin",
+    "sku": "TSHIRT-04",
+    "amount": 19.0,
+    "delivered_days_ago": 6,
+    "in_stock": true,
+    "message": "I've worn this t-shirt a couple of times and the collar is already stretched. Refund please.",
+    "evidence_video_id": "vid_stub_tshirt_worn",
+    "evidence_summary_stub": "Grey cotton t-shirt laid on a bed; the collar is stretched and a faint coffee-coloured stain on the chest is shown at about 0:03; the tag has been removed and the fabric shows pilling under the arms, consistent with the shirt having been worn and washed.",
+    "expected_action": "denied",
+    "expected_clauses": [
+      "P6"
+    ],
+    "notes": "A1077 (c_erin, delivered 6 days ago, 2 x TSHIRT-04). Customer states it was worn. Evidence shows wear (stretched collar, stain, tag removed, pilling) -> apparel_worn is non-returnable (P6) -> deny. No escalation needed; explain plainly and do not promise a refund. "
+  },
+  {
+    "id": "GC-29",
+    "category": "non_returnable",
+    "order_id": "A1077",
+    "customer_id": "c_erin",
+    "sku": "TSHIRT-04",
+    "amount": 19.0,
+    "delivered_days_ago": 6,
+    "in_stock": true,
+    "message": "The t-shirt shrank and pilled after one wash. I want my money back for it.",
+    "evidence_video_id": "vid_stub_tshirt_worn",
+    "evidence_summary_stub": "Grey cotton t-shirt laid on a bed; the collar is stretched and a faint coffee-coloured stain on the chest is shown at about 0:03; the tag has been removed and the fabric shows pilling under the arms, consistent with the shirt having been worn and washed.",
+    "expected_action": "denied",
+    "expected_clauses": [
+      "P6"
+    ],
+    "notes": "A1077. Washed = worn -> P6 -> deny. Evidence shows wear (stretched collar, stain, tag removed, pilling) -> apparel_worn is non-returnable (P6) -> deny. No escalation needed; explain plainly and do not promise a refund. "
+  },
+  {
+    "id": "GC-30",
+    "category": "non_returnable",
+    "order_id": "A1047",
+    "customer_id": "c_erin",
+    "sku": "TSHIRT-04",
+    "amount": 19.0,
+    "delivered_days_ago": 2,
+    "in_stock": true,
+    "message": "The t-shirt from my order is stained and the collar is stretched. Refund the shirt please.",
+    "evidence_video_id": "vid_stub_tshirt_worn",
+    "evidence_summary_stub": "Grey cotton t-shirt laid on a bed; the collar is stretched and a faint coffee-coloured stain on the chest is shown at about 0:03; the tag has been removed and the fabric shows pilling under the arms, consistent with the shirt having been worn and washed.",
+    "expected_action": "denied",
+    "expected_clauses": [
+      "P6"
+    ],
+    "notes": "A1047 (c_erin, mixed order: t-shirt + backordered mug). This claim is about the t-shirt only -> P6 -> deny $19; the mug in the same order would be refundable if claimed separately with its own evidence."
+  }
+]

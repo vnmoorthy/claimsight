@@ -1,0 +1,36 @@
+{
+  "name": "claude-agent-starter",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:agents": "edgeone makers dev",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "dev:local": "STORAGE=memory MEMORIES_STUB=1 SELF_BASE_URL=http://localhost:8088 npx tsx scripts/local-harness.ts",
+    "typecheck": "tsc --noEmit",
+    "index:clips": "npx tsx scripts/index-demo-clips.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.144",
+    "@anthropic-ai/sdk": "^0.97.0",
+    "@edgeone/pages-blob": "^0.0.14",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "dotenv": "^16.4.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@edgeone/types": "^1.0.1",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "tsx": "^4.23.13",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.2"
+  }
+}

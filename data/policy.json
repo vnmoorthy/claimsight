@@ -1,0 +1,17 @@
+{
+  "store": "Northwind Home",
+  "currency": "USD",
+  "return_window_days": 30,
+  "auto_approve_limit": 75,
+  "replacement_first_categories": ["kitchen", "lighting"],
+  "non_returnable_categories": ["apparel_worn"],
+  "fraud": { "similarity_threshold": 0.80, "action": "escalate" },
+  "clauses": {
+    "P1": "Refund window is 30 days from delivery",
+    "P2": "Damage must be visible in customer evidence",
+    "P3": "Amounts above $75 require human approval",
+    "P4": "Kitchen and lighting items: offer replacement first when in stock",
+    "P5": "Matching evidence across different accounts is escalated as suspected fraud",
+    "P6": "Worn apparel is not returnable"
+  }
+}

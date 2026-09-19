@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClaimSight — refunds with receipts</title>
+    <meta name="description" content="ClaimSight — an after-sales teammate that watches the customer's evidence video, applies the refund policy, executes the refund and escalates only when policy or fraud rules say so. EdgeOne Makers · Memories.ai · AgentX · WorkBuddy · VeloDB" />
+    <meta name="keywords" content="ClaimSight, EdgeOne Makers, Memories.ai, AgentX, WorkBuddy, VeloDB, refunds, after-sales, returns fraud" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0f1320" />
+    <meta property="og:title" content="ClaimSight — refunds with receipts" />
+    <meta property="og:description" content="Watches the evidence video, applies the policy, executes the refund, catches returns fraud across accounts." />
+    <meta property="og:image" content="/banner.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script>
+      // Apply the saved (or system) theme before first paint so the shell never flashes.
+      (function () {
+        var theme = 'dark';
+        try {
+          var saved = localStorage.getItem('claimsight-theme');
+          if (saved === 'light' || saved === 'dark') theme = saved;
+          else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';
+        } catch (e) { /* storage blocked — keep dark */ }
+        document.documentElement.setAttribute('data-theme', theme);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'light' ? '#f4f6fa' : '#0f1320');
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

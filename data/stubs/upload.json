@@ -1,0 +1,18 @@
+{
+  "_comment": "Stub for POST /videos (multipart). Real shape: {video_id, operation, status}. In stub mode the returned video_id is chosen by the order_id passed as metadata.title so an uploaded file maps onto a canned scenario; the operation id is op_stub_<epoch_ms> and progresses by elapsed time.",
+  "order_to_video": {
+    "A1042": "vid_stub_mug_alice",
+    "A1043": "vid_stub_mug_mallory",
+    "A1044": "vid_stub_vase_crack",
+    "A1045": "vid_stub_lamp_dent",
+    "A1046": "vid_stub_no_damage",
+    "A1047": "vid_stub_tshirt_worn",
+    "A1048": "vid_stub_headphones_crack",
+    "A1049": "vid_stub_vase_crack",
+    "A1050": "vid_stub_headphones_crack",
+    "A1051": "vid_stub_lamp_dent",
+    "A1061": "vid_stub_lamp_dent",
+    "A1077": "vid_stub_tshirt_worn"
+  },
+  "default": { "video_id": "vid_stub_mug_alice", "status": "processing" }
+}

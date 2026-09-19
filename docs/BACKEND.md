@@ -1,0 +1,214 @@
+# ClaimSight backend notes
+
+Detailed notes on the agent, cloud functions, storage adapter and Memories.ai client, written during the build. The top-level README is the entry point; this file is the reference.
+
+# ClaimSight
+
+**An after-sales teammate that watches the customer's evidence video, applies the refund policy, executes the refund itself, and pulls a human in only when policy or fraud rules say so.**
+
+Built on the EdgeOne Makers `claude-agent-starter-node` template: a Claude Agent SDK agent (through the Makers AI Gateway) with a custom MCP tool set, stateless cloud functions for orders / ledger / claims, Memories.ai Video Datalake for evidence understanding and cross-account fraud matching, AgentX traces for observability, and a React/Vite UI (chat + Decision Card + Refund Desk).
+
+**Track:** AI Assistants · **Framework:** Claude Agent SDK · **Language:** TypeScript (Node ≥ 20)
+
+## What happens on a claim
+
+```
+customer message (+ order id, evidence video)
+        │
+        ▼
+POST /claims  ── agents/claims/index.ts (Claude Agent SDK, MCP server "claimsight", no shell/browser)
+        │
+        ├─ lookup_order      → orders:<id>            (Blob / memory)
+        ├─ get_policy        → policy                 (data/policy.json)
+        ├─ inspect_evidence  → Memories.ai summary + caption + moment frame
+        ├─ fraud_check       → Memories.ai image search (frame_embedding) → video_index / GET /claims?video_id=
+        ├─ execute_refund / create_replacement → POST /refund | /replacement   (server-side policy enforcement, ledger)
+        ├─ escalate          → POST /claims-record (pending_review) + Slack webhook
+        └─ record_decision   → POST /claims-record + POST /agentx-emit (OTLP trace: 1 agent span + 1 span per tool)
+        │
+        ▼
+reply to the customer + fenced ```decision block  →  Decision Card in the UI
+                                                 →  Refund Desk (GET /claims, POST /claims-decision) for humans
+```
+
+Decision procedure (system prompt, SPEC §3): lookup → policy → inspect evidence → fraud check → decide → execute → record → reply.
+
+### Agent modes
+
+`POST /claims` runs in one of two modes (logged per request as `mode=…`):
+
+* **`llm`** — the Claude Agent SDK drives the eight `claimsight` MCP tools through the Makers AI Gateway (`AI_GATEWAY_MODEL`, SDK `fallbackModel`). Selected when `AGENT_MODE=llm` or a model key is present.
+* **`deterministic`** — `agents/claims/_deterministic.ts` runs the same tool sequence in code (lookup → policy → evidence → fraud → decide → execute/escalate → record) through the same tool handlers, streams the same `tool_called` / `text_delta` / `decision` / `done` events, writes a plain-English explanation that cites the clauses, and ends with the identical ```decision block. Selected when `AGENT_MODE=deterministic`, or automatically when neither `AI_GATEWAY_API_KEY` nor `ANTHROPIC_API_KEY` is set. This is the offline rehearsal path and the on-stage fallback if the gateway is flaky.
+
+Both modes honour `stream:false` (JSON `{text, decision, …}`) and `context.request.signal` (the `/stop` route).
+
+| Situation | Action | Clauses |
+|-----------|--------|---------|
+| Delivered more than 30 days ago | deny | P1 |
+| Worn apparel | deny | P6 |
+| No damage visible / evidence not ready | escalate (recommend deny) | P2 |
+| Evidence matches another account's video (score ≥ 0.80) | escalate (suspected fraud) | P5 |
+| Damaged item worth more than $75 | escalate (recommend refund/replacement) | P3 |
+| Kitchen / lighting item in stock | replacement | P2, P4 |
+| Otherwise | refund of the item's line total | P2 (+P4 if replacement-first but out of stock) |
+
+The server never trusts the agent: `POST /refund` rejects anything above the order total, anything above the auto-approve limit without `x-human-approved: true` (only the desk sends it), duplicate executions per claim, and cumulative refunds beyond the order total.
+
+## Architecture
+
+```
+claimsight/
+├── agents/                              # stateful Makers agents (SSE)
+│   ├── claims/index.ts                  # POST /claims — the ClaimSight agent (+ stream:false JSON mode for eval)
+│   ├── claims/_tools.ts                 # the 8 MCP tools + per-claim state (model-free, scriptable)
+│   ├── chat/, stop/                     # template chat agent (kept) and /stop
+│   ├── _kv.ts, _memories.ts, _policy.ts # storage adapter, Memories.ai client, policy derivations
+│   └── _model.ts, _logger.ts, _redact.ts
+├── cloud-functions/                     # stateless Node functions (JSON)
+│   ├── seed/ orders-lookup/ upload-evidence/ evidence-status/ refund/ replacement/
+│   ├── claims/ (GET) claims-record/ claims-decision/ stats/ agentx-emit/ demo-evidence/
+│   ├── _kv.ts, _memories.ts             # verbatim copies of the agents/ helpers (bundles are built separately)
+│   └── _ledger.ts                       # refund/replacement enforcement shared by /refund, /replacement, /claims-decision
+├── data/
+│   ├── orders.json, policy.json         # seed data (12 orders / 6 customers; policy P1–P6)
+│   ├── demo_evidence.json               # "Use demo clip" list [{label, video_id, order_id}]
+│   ├── golden_claims.json               # eval cases (eval/)
+│   └── stubs/*.json                     # canned Memories.ai responses (MEMORIES_STUB=1)
+├── src/                                 # React/Vite UI: chat + evidence upload + Decision Card + /desk
+├── eval/                                # AgentX eval + monitors (Python)
+├── workbuddy/refund-desk/               # WorkBuddy skill for reviewers
+└── velodb/                              # optional analytics schema/loader
+```
+
+### Storage
+
+The claims store (`_kv.ts`) is a tiny `get / set / delete / list(prefix)` adapter with three backends, selected once per process and logged once (`[storage] backend=…`):
+
+| Backend | When | Notes |
+|---------|------|-------|
+| `blob` | `@edgeone/pages-blob` → `getStore({ name: CLAIMS_BLOB_STORE, consistency: "strong" })` succeeds (project linked / deployed) | records are key prefixes: `orders/<id>.json`, `claims/<id>.json`, `video_index/<vid>.json`, `ledger/<txn>.json`, `counters.json`, `policy.json` |
+| `kv` | a console-bound KV global named by `CLAIMS_KV` exists (Edge runtime style `put/get/delete/list`) | keys `orders__A1042` … |
+| `memory` | `STORAGE=memory`, or the Blob probe throws (not linked, no credentials) | module-level Map, auto-seeded from `data/*.json`; not persistent and not shared across processes |
+
+`STORAGE=auto` (default) tries KV, then Blob, then memory. Logical keys follow SPEC §1 (`orders:<id>`, `claims:<id>`, `video_index:<video_id>`, `ledger:<txn>`, `counters`, `policy`).
+
+### Memories.ai
+
+`_memories.ts` talks to the Video Datalake (`MEMORIES_BASE`, header `Authorization: <MEMORIES_API_KEY>` — the raw key): `POST /videos` (multipart `json` + `file`), `GET /operations/{op}`, `GET /videos/{id}/summary`, `GET /videos/{id}/caption`, `GET /moments/{video_id}@{start}-{end}?expand=caption,frame`, `POST /search` with `{collection_id, query_images:[frame_url], targets:["frame_embedding"], top_k}`. With `MEMORIES_STUB=1` (or no key) every call returns the API-shaped canned responses in `data/stubs/` keyed by video id, uploads map an order id to a stub video, and operations progress `preprocess → index → derive` over `MEMORIES_STUB_INDEX_SECONDS`. The whole flow runs offline.
+
+## Run locally
+
+Prerequisites: Node ≥ 20, `npm i -g edgeone`.
+
+```bash
+npm install
+cp .env.example .env            # fill in AI_GATEWAY_API_KEY; keep MEMORIES_STUB=1 for the offline rehearsal
+edgeone login                   # once; agents need the Makers AI Gateway key sync
+PAGES_SOURCE=skills edgeone makers dev -n claimsight
+```
+
+Always pass `-n claimsight` (bare `edgeone makers dev` opens an interactive link picker that hangs in non-interactive shells; `-n` auto-creates/links the project). The dev server serves the UI, agents and cloud functions on http://localhost:8088. `edgeone makers dev` requires a logged-in account (or `-t <token>`); the Blob backend additionally needs the project linked — without it the store falls back to the in-memory Map automatically.
+
+Rehearsal without network (everything stubbed):
+
+```bash
+curl -s -X POST localhost:8088/seed -H 'Content-Type: application/json' -d '{}'
+curl -s -X POST localhost:8088/orders-lookup -H 'Content-Type: application/json' -d '{"order_id":"A1042"}'
+curl -s -X POST localhost:8088/claims -H 'Content-Type: application/json' -H 'makers-conversation-id: eval-1' \
+     -d '{"message":"My mug arrived chipped","order_id":"A1042","evidence_video_id":"vid_stub_mug_alice","stream":false}'
+curl -s 'localhost:8088/claims?status=pending_review'
+curl -s localhost:8088/stats
+```
+
+Seed scenarios (`data/orders.json`; delivery dates are relative to the moment `/seed` runs):
+
+| Order | Customer | Item | Scenario |
+|-------|----------|------|----------|
+| A1042 | c_alice | MUG-01 $24, 3 days ago, backordered | clean auto-approve → refund (P2, P4 considered) |
+| A1043 | c_mallory | MUG-01 $24, 3 days ago | same footage as A1042 → escalate (P5) |
+| A1050 / A1048 | c_carol / c_bob | HDPH-02 $129 | above limit → escalate (P3) |
+| A1045 / A1051 / A1046 | c_carol / c_mallory / c_dave | LAMP-03 $59 / MUG-01 ×2, in stock | replacement-first (P4) |
+| A1061 / A1049 | c_dave / c_alice | LAMP-03 45 days / VASE-05 40 days | outside window → deny (P1) |
+| A1077 / A1047 | c_erin | TSHIRT-04 (worn) | non-returnable → deny (P6) |
+| A1044 | c_bob | VASE-05 $85 | above limit → escalate (P3) |
+
+Demo clips (`data/demo_evidence.json`) point at the stub video ids (`vid_stub_mug_alice`, `vid_stub_mug_mallory`, `vid_stub_headphones_crack`, `vid_stub_lamp_dent`, `vid_stub_tshirt_worn`, `vid_stub_vase_crack`, `vid_stub_no_damage`).
+
+### Pre-indexing evidence (live Memories.ai)
+
+1. Create a collection in the Memories.ai console → `MEMORIES_CLAIMS_COLLECTION=col_…`, set `MEMORIES_API_KEY`, unset `MEMORIES_STUB`.
+2. Upload each demo clip through `POST /upload-evidence` (multipart `file`, `order_id`) or the console; poll `POST /evidence-status` until `done`.
+3. Put the returned `vid_…` ids into `data/demo_evidence.json`. Cloud functions accept request bodies up to 6 MB — pre-index bigger clips and pick them from the dropdown.
+
+## Deploy
+
+```bash
+PAGES_SOURCE=skills edgeone makers env set MEMORIES_API_KEY "sk-mai-…"      # and the other non-gateway vars below
+PAGES_SOURCE=skills edgeone makers env set SELF_BASE_URL "https://<project>.edgeone.run"
+PAGES_SOURCE=skills edgeone makers deploy
+```
+
+`AI_GATEWAY_API_KEY` / `AI_GATEWAY_BASE_URL` are auto-provisioned from `.env.example`; everything else is set with `edgeone makers env set`. Install nothing extra: `@edgeone/pages-blob` (Blob) and `@anthropic-ai/claude-agent-sdk` are already dependencies.
+
+## Environment variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `AI_GATEWAY_API_KEY`, `AI_GATEWAY_BASE_URL` | — / `https://ai-gateway.edgeone.link/v1` | Makers AI Gateway (auto-provisioned on deploy) |
+| `AI_GATEWAY_MODEL` | `@makers/deepseek-v4-pro` | claims agent model; `AI_GATEWAY_FALLBACK_MODEL` (`@makers/kimi-k2.6`) is passed as the SDK `fallbackModel` |
+| `AGENT_MODE` | auto | `llm` or `deterministic`; unset ⇒ deterministic when no `AI_GATEWAY_API_KEY` / `ANTHROPIC_API_KEY` is configured (see Agent modes) |
+| `MEMORIES_API_KEY` | — | Memories.ai key (`Authorization: <key>`); unset ⇒ stub mode |
+| `MEMORIES_BASE` | `https://api.memories.ai/serve/datalake/v1` | Datalake base URL |
+| `MEMORIES_CLAIMS_COLLECTION`, `MEMORIES_CATALOG_COLLECTION` | — | collection ids (evidence / optional catalog) |
+| `MEMORIES_STUB` | — | `1` ⇒ canned responses from `data/stubs/` (`MEMORIES_STUB_INDEX_SECONDS` controls the fake indexing time) |
+| `FRAUD_SIMILARITY_THRESHOLD` | `0.80` | frame-embedding score that counts as a match (P5) |
+| `SELF_BASE_URL` | `http://localhost:8088` (else the request origin) | where the agent reaches `/refund`, `/replacement`, `/claims-record`, `/agentx-emit` |
+| `UI_BASE_URL` | `SELF_BASE_URL` | public UI origin for the Slack link (`<UI>/desk`) |
+| `SLACK_WEBHOOK_URL` | — | optional incoming webhook for escalations |
+| `AGENTX_OTLP_URL`, `AGENTX_API_KEY` | `http://localhost:4700/api/v1/otel/v1/traces` / — | OTLP/HTTP JSON traces; skipped silently when both are unset or the collector is unreachable |
+| `ADMIN_TOKEN` | — | protects `POST /seed` and `POST /claims-record` (`x-admin-token`); open when unset |
+| `STORAGE` | `auto` | `auto` / `blob` / `kv` / `memory` (see Storage) |
+| `CLAIMS_BLOB_STORE`, `CLAIMS_KV` | `claimsight` / `CLAIMS_KV` | Blob store name / KV global name |
+| `PAGES_BLOB_PROJECT_ID`, `PAGES_BLOB_TOKEN` | — | optional external Blob access from local scripts |
+| `VELODB_HOST`, `VELODB_PORT`, `VELODB_USER`, `VELODB_PASSWORD`, `VELODB_DB` | `9030` | optional analytics (`velodb/`) |
+
+Secrets live only in the agent / cloud-function env: the model never sees them (the agent has no shell or file tools, and the Claude CLI subprocess env is scrubbed of `MEMORIES_API_KEY`, `SLACK_WEBHOOK_URL`, `AGENTX_API_KEY`, `ADMIN_TOKEN`, …).
+
+## Endpoints
+
+| Route | Method | Body / query | Returns |
+|-------|--------|--------------|---------|
+| `/claims` | POST (agent) | `{message, order_id?, evidence_video_id?, email?, stream?, userId?, userMsgId?, botMsgId?}` + header `makers-conversation-id` | SSE (`claim`, `text_delta`, `tool_called`, `decision`, `done`, …). With `stream:false`: JSON `{status, text, decision, claim_id, claim_status, trace_id, tool_calls, latency_ms, error?}` |
+| `/stop` | POST | `{conversation_id}` | aborts the active run (template) |
+| `/seed` | POST | `{clear_claims?}` · header `x-admin-token` when `ADMIN_TOKEN` is set | loads orders + policy, resets counters (idempotent) |
+| `/orders-lookup` | POST / GET | `{order_id, email?}` / `?order_id=` | order record (+ `days_since_delivery`) or 404 |
+| `/upload-evidence` | POST multipart | `file` (mp4/mov/webm), `order_id` | `202 {video_id, operation}` (proxied to Memories.ai; key stays server-side) |
+| `/evidence-status` | POST / GET | `{operation, video_id}` | `{done, stage, progress:{preprocess,index,derive,percent}, summary?, caption?, caption_segments?}` |
+| `/refund` | POST | `{order_id, amount, reason, claim_id}` · header `x-human-approved: true` for amounts above the limit | `{txn_id, amount, status:"refunded", method:"refund", …}` or 403 (`requires_human_approval`, `amount_exceeds_order_total`, `order_refund_exhausted`) |
+| `/replacement` | POST | `{order_id, sku, claim_id, reason?}` | same shape with `method:"replacement"`; 409 `out_of_stock` |
+| `/claims` | GET | `?status=&video_id=&order_id=&customer_id=&limit=` | `{claims:[…], count}` newest first |
+| `/claims-list` | GET | same as `GET /claims` | alias, in case a deployment routes every `/claims` method to the agent |
+| `/claims-record` | POST | `{claim}` · `x-admin-token` | upserts `claims:<id>` + `video_index`, bumps counters (used by the agent's `escalate` / `record_decision`) |
+| `/claims-decision` | POST | `{claim_id, decision:"approve"\|"deny", note?}` | applies the human decision (approve executes the recommended refund/replacement with human approval) |
+| `/stats` | GET | — | `{counters, derived:{auto_approval_pct, refunded_total, fraud_flags, pending_review, median_latency_ms, p95_latency_ms}, recent:[last 20]}` |
+| `/agentx-emit` | POST | `{claim}` | posts one OTLP trace (agent span + tool spans) → `{emitted, trace_id, spans}` |
+| `/demo-evidence` | GET | — | `{items:[{label, video_id, order_id}]}` from `data/demo_evidence.json` |
+| `/history`, `/conversations`, `/clear-history`, `/delete-conversation` | POST | template conversation store endpoints | |
+
+The final assistant message of every claim ends with:
+
+```decision
+{"claim_id":"clm_…","action":"refund|replacement|escalated|denied","amount":24,"policy_clauses":["P2","P4"],"evidence":"white ceramic mug, chip on rim at 0:03","fraud_matches":0,"txn_id":"txn_…","latency_ms":18342}
+```
+
+If the model omits it, the handler appends the block recorded by `record_decision`, so the Decision Card and the eval harness always get one.
+
+## Evaluation and reviewers
+
+* `eval/run_eval.py` posts each golden case to `POST /claims` with `stream:false` (conversation id `eval-<case id>`; pass `order_id` and the stub `evidence_video_id` from `data/demo_evidence.json`) and judges the returned `{text, decision}`; `eval/monitors.py` enables the AgentX built-in scorers.
+* `workbuddy/refund-desk/` lets a manager review `GET /claims?status=pending_review` and post decisions to `POST /claims-decision` from WorkBuddy; the UI offers the same at `/desk`.
+* `velodb/` (optional) loads `GET /claims` into VeloDB for dashboards.
+
+## License
+
+MIT.

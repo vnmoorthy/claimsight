@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  html,body{margin:0;width:1600px;height:800px;overflow:hidden;background:#0f1320}
+  .wrap{position:relative;width:1600px;height:800px;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#e8ecf6;
+    background:radial-gradient(900px 500px at 78% 30%,#1c2c48 0%,#0f1320 60%),#0f1320}
+  .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:48px 48px}
+  .eyebrow{position:absolute;left:96px;top:120px;font-family:'IBM Plex Mono',monospace;font-size:20px;letter-spacing:.18em;text-transform:uppercase;color:#7f89a6}
+  h1{position:absolute;left:92px;top:160px;margin:0;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:168px;line-height:.95;letter-spacing:-.02em}
+  h1 span{display:block;color:#2bc0a0;font-weight:700;font-size:84px;margin-top:10px;letter-spacing:-.01em}
+  .lede{position:absolute;left:96px;top:470px;width:760px;font-size:28px;line-height:1.4;color:#b3bbd1}
+  .loop{position:absolute;left:96px;top:600px;display:flex;gap:14px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:19px;color:#e8ecf6}
+  .loop b{background:#171c2b;border:1px solid #2a3145;border-radius:8px;padding:10px 16px;font-weight:500}
+  .loop b.t{background:#16324a;border-color:#2bc0a0;color:#2bc0a0}
+  .loop i{color:#3987e5;font-style:normal}
+  .card{position:absolute;left:1010px;top:150px;width:470px;background:#171c2b;border:1px solid #2a3145;border-radius:18px;padding:28px 30px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+  .card .k{font-family:'IBM Plex Mono',monospace;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:#7f89a6}
+  .card .v{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:56px;margin:6px 0 2px;color:#e8ecf6}
+  .badge{display:inline-block;margin-top:6px;background:#15301f;color:#3ccc6a;border-radius:999px;padding:6px 14px;font-weight:600;font-size:18px}
+  .row{display:flex;justify-content:space-between;margin-top:18px;font-size:19px;color:#b3bbd1;border-top:1px solid #2a3145;padding-top:14px}
+  .row span:last-child{color:#e8ecf6;font-weight:600;font-family:'IBM Plex Mono',monospace}
+  .chips{margin-top:14px;display:flex;gap:8px}
+  .chips em{font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:15px;background:#1c2c48;color:#9dc1ff;border-radius:6px;padding:5px 9px}
+  .alert{position:absolute;left:1060px;top:560px;width:420px;background:#3a1b1b;border:1px solid #ff6b6b;border-radius:14px;padding:18px 22px;font-size:19px;color:#ffd6d6;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+  .alert b{display:block;color:#ff6b6b;font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
+  .foot{position:absolute;right:96px;bottom:44px;font-family:'IBM Plex Mono',monospace;font-size:16px;color:#7f89a6;letter-spacing:.06em}
+</style></head><body><div class="wrap"><div class="grid"></div>
+<div class="eyebrow">After-sales teammate · Evidence → Policy → Transaction</div>
+<h1>ClaimSight<span>Refunds with receipts.</span></h1>
+<div class="lede">Watches the customer's evidence video, applies your refund policy, executes the refund itself, and catches returns fraud by matching footage across accounts.</div>
+<div class="loop"><b>Data</b><i>→</i><b>Intelligence</b><i>→</i><b>Experience</b><i>→</i><b>Execution</b><i>→</i><b class="t">Transaction</b></div>
+<div class="card"><div class="k">Claim C-1042 · order A1042</div><div class="v">$24.00 refunded</div><span class="badge">Auto-approved · 18.3 s</span>
+  <div class="row"><span>Evidence</span><span>chip on rim @ 0:03</span></div>
+  <div class="row"><span>Policy</span><span>P1 P2 P4 ✓</span></div>
+  <div class="row"><span>Transaction</span><span>txn_8f3a…</span></div>
+  <div class="chips"><em>EdgeOne Makers</em><em>Memories.ai</em><em>AgentX</em><em>WorkBuddy</em></div></div>
+<div class="alert"><b>Fraud twin detected</b>Same footage as C-1042 from a different account (similarity 0.91). Claim frozen, manager pinged in Slack.</div>
+<div class="foot">github.com/vnmoorthy/claimsight</div>
+</div></body></html>

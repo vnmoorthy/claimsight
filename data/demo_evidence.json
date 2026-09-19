@@ -1,0 +1,42 @@
+[
+  {
+    "label": "Chipped mug — A1042 (clean auto-approve)",
+    "video_id": "vid_stub_mug_alice",
+    "order_id": "A1042"
+  },
+  {
+    "label": "Same mug footage, other account — A1043 (fraud twin)",
+    "video_id": "vid_stub_mug_mallory",
+    "order_id": "A1043"
+  },
+  {
+    "label": "Cracked headphones — A1050 (above $75 limit)",
+    "video_id": "vid_stub_headphones_crack",
+    "order_id": "A1050"
+  },
+  {
+    "label": "Dented desk lamp — A1045 (replacement-first)",
+    "video_id": "vid_stub_lamp_dent",
+    "order_id": "A1045"
+  },
+  {
+    "label": "Dented desk lamp — A1061 (outside 30-day window)",
+    "video_id": "vid_stub_lamp_dent",
+    "order_id": "A1061"
+  },
+  {
+    "label": "Worn t-shirt — A1077 (non-returnable)",
+    "video_id": "vid_stub_tshirt_worn",
+    "order_id": "A1077"
+  },
+  {
+    "label": "Cracked vase — A1044 (above limit)",
+    "video_id": "vid_stub_vase_crack",
+    "order_id": "A1044"
+  },
+  {
+    "label": "Mug with no visible damage — A1046 (evidence inconclusive)",
+    "video_id": "vid_stub_no_damage",
+    "order_id": "A1046"
+  }
+]

@@ -1,0 +1,37 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    name: typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+  eval-gate:
+    name: AgentX deploy gate (dry run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r eval/requirements.txt
+      - name: Start AgentX self-host engine
+        run: |
+          nohup agentx-trace-eval -port 4700 > agentx.log 2>&1 &
+          for i in $(seq 1 60); do grep -q "Default project API key" agentx.log && break; sleep 2; done
+          echo "AGENTX_API_KEY=$(grep -o 'agtx_local_[a-z0-9]*' agentx.log | head -1)" >> "$GITHUB_ENV"
+          echo "AGENTX_API_BASE_URL=http://localhost:4700/api/v1" >> "$GITHUB_ENV"
+      - name: Golden-claim gate (offline scorer, dry run)
+        run: python eval/run_eval.py --dry-run --offline-scorer
