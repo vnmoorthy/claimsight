@@ -21,6 +21,11 @@ ClaimSight is an after-sales teammate that verifies damage from the customer's o
 
 **Presentation:** docs/deck/ClaimSight-deck.pptx (10 slides) · docs/STORYBOARD.md (3-minute script)
 
+## Demo-day status (say it before judges ask)
+- Memories.ai: full Video Datalake client and evidence pipeline built and contract-tested; the account had no credits on the day, so the demo runs on canned evidence and the Lab uses a local perceptual-hash baseline. Switch is one env var (`MEMORIES_STUB=0`) plus `npm run go-live:memories`.
+- AI model: no gateway key on the day, so the agent runs its policy engine; the LLM path is implemented (`AGENT_MODE=llm`) and falls back to the engine automatically.
+- Live locally and verified: Blender Damage Twins (~27 s per claim), AgentX traces + 31-claim gate, S3 archive (S3-compatible store), VeloDB kit on Apache Doris.
+
 ## Screenshots to attach (in this order)
 1. Chat with a finished Decision Card and the Damage Twin video (auto-approved refund, A1042)
 2. Refund Desk with the escalated fraud-twin claim (A1043) and its detail drawer

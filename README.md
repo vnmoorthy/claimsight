@@ -29,6 +29,8 @@ An after-sales teammate that watches the customer's evidence video, applies your
 
 ---
 
+> **Demo-day status (Sept 19, 2026).** Every integration is implemented and exercised against the sponsor APIs' contracts, but two run in demo mode on stage: the Memories.ai account had no credits, so the evidence pipeline runs on canned responses and the Lab uses the local perceptual-hash baseline; and without an AI Gateway key the agent runs its policy engine (identical trace and card). Everything else in this README is live locally: the Blender twin renders, AgentX gate and monitors, the S3 archive path, and the VeloDB kit on Apache Doris.
+
 ## Why
 
 Return fraud cost US retailers **$101 billion in 2023** ([NRF & Appriss Retail](https://nrf.com/media-center/press-releases/nrf-and-appriss-retail-report-743-billion-merchandise-returned-2023)). Every refund still needs a human to squint at a photo, guess, and either overpay or escalate everything. And the same cracked mug gets filmed for three claims from three "customers", which no refund queue can see.
