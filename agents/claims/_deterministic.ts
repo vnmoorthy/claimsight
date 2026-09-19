@@ -283,20 +283,20 @@ export async function* runDeterministicClaim(input: DeterministicInput): AsyncGe
   yield* emit(hints.videoId
     ? `Thanks for the video — I watched it and could see ${seen} on the ${item.name.toLowerCase()}.`
     : `Thanks for the details on the ${item.name.toLowerCase()} — I reviewed the evidence you provided and noted ${seen}.`);
-  yield* emit(`Order ${order.order_id} was delivered ${days} day${days === 1 ? '' : 's'} ago, ${lookup.within_return_window ? 'inside' : 'outside'} our ${policy.return_window_days}-day return window (P1: ${clauseText(policy, 'P1')}).`);
+  yield* emit(`Order ${order.order_id} was delivered ${days} day${days === 1 ? '' : 's'} ago, ${lookup.within_return_window ? 'inside' : 'outside'} our ${policy.return_window_days}-day return window (P1).`);
 
   switch (action) {
     case 'refund':
-      yield* emit(`The damage is clearly visible in your evidence (P2: ${clauseText(policy, 'P2')}).`);
+      yield* emit(`The damage is clearly visible in your evidence (P2).`);
       if (item.replacement_first) {
         yield* emit(refusesReplacement
-          ? `We normally offer a replacement first for ${item.category} items (P4: ${clauseText(policy, 'P4')}), but since you asked for a refund I've gone straight to that.`
-          : `We normally offer a replacement first for ${item.category} items (P4: ${clauseText(policy, 'P4')}), but the ${item.name.toLowerCase()} is currently out of stock, so I've refunded you instead.`);
+          ? `We normally offer a replacement first for ${item.category} items (P4), but since you asked for a refund I've gone straight to that.`
+          : `We normally offer a replacement first for ${item.category} items (P4), but the ${item.name.toLowerCase()} is currently out of stock, so I've refunded you instead.`);
       }
       yield* emit(`I've issued a refund of ${money(amount)} to your original payment method — transaction ${txnId}. It should appear within 3–5 business days.`);
       break;
     case 'replacement':
-      yield* emit(`The damage is clearly visible in your evidence (P2: ${clauseText(policy, 'P2')}), and because ${item.category} items are replaced first when we have stock (P4: ${clauseText(policy, 'P4')}), I've arranged a replacement ${itemLabel} at no charge — reference ${txnId}.`);
+      yield* emit(`The damage is clearly visible in your evidence (P2), and because ${item.category} items are replaced first when we have stock (P4), I've arranged a replacement ${itemLabel} at no charge — reference ${txnId}.`);
       yield* emit(`It will ship to ${order.shipping_address}; there's no need to send the damaged one back.`);
       break;
     case 'denied':
@@ -304,23 +304,23 @@ export async function* runDeterministicClaim(input: DeterministicInput): AsyncGe
         yield* emit(`Because the claim is outside that window, I'm not able to approve a refund or replacement for the ${item.name.toLowerCase()}.`);
         yield* emit('If you believe the delivery date is wrong, reply here and a teammate will double-check it.');
       } else {
-        yield* emit(`The video shows the ${item.name.toLowerCase()} has been worn, and worn apparel isn't returnable under our policy (P6: ${clauseText(policy, 'P6')}), so I can't approve this return.`);
+        yield* emit(`The video shows the ${item.name.toLowerCase()} has been worn, and worn apparel isn't returnable under our policy (P6), so I can't approve this return.`);
         yield* emit('If the item arrived with a defect that isn\'t wear, reply with a clip of it and a teammate will take another look.');
       }
       break;
     case 'escalated':
       if (clauses.includes('P5')) {
-        yield* emit(`Before anything is issued, our policy requires a teammate to review this claim, because the evidence matches footage already submitted for a different account (P5: ${clauseText(policy, 'P5')}).`);
+        yield* emit(`Before anything is issued, our policy requires a teammate to review this claim, because the evidence matches footage already submitted for a different account (P5).`);
       } else if (clauses.includes('P3')) {
-        yield* emit(`The damage is visible (P2: ${clauseText(policy, 'P2')}), but ${money(item.line_total)} is above what I can approve on my own (P3: ${clauseText(policy, 'P3')}), so I've sent it to a teammate with a recommendation to ${recommended === 'replacement' ? 'ship a replacement' : 'refund you in full'}.`);
+        yield* emit(`The damage is visible (P2), but ${money(item.line_total)} is above what I can approve on my own (P3), so I've sent it to a teammate with a recommendation to ${recommended === 'replacement' ? 'ship a replacement' : 'refund you in full'}.`);
       } else if (execError) {
         const why = execError === 'order_refund_exhausted' ? 'a refund has already been issued against this order'
           : execError === 'amount_exceeds_order_total' ? 'the amount is more than the order total'
           : execError === 'out_of_stock' ? 'the replacement is out of stock and the refund could not be issued automatically'
           : `the payments service declined the automatic ${recommended ?? 'refund'}`;
-        yield* emit(`The damage is visible (P2: ${clauseText(policy, 'P2')}) and the claim is within policy, but ${why}, so I've handed it to a teammate to complete rather than guess.`);
+        yield* emit(`The damage is visible (P2) and the claim is within policy, but ${why}, so I've handed it to a teammate to complete rather than guess.`);
       } else {
-        yield* emit(`I couldn't see the damage in the evidence (P2: ${clauseText(policy, 'P2')}), so I've asked a teammate to take a closer look rather than decide on my own — if you have a clearer clip or another angle, reply with it and it will be added to the claim.`);
+        yield* emit(`I couldn't see the damage in the evidence (P2), so I've asked a teammate to take a closer look rather than decide on my own — if you have a clearer clip or another angle, reply with it and it will be added to the claim.`);
       }
       yield* emit(`Your claim reference is ${state.displayId}; you'll hear back as soon as it's reviewed.`);
       break;

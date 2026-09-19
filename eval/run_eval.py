@@ -80,7 +80,7 @@ CODE_SCORER_NAME = "ClaimSight policy-action match (offline)"
 SCORER_GROUP_NAME = "ClaimSight offline gate v1"
 AGENT_TRACE_NAME = "claimsight-claims-agent"
 
-ACTIONS = ("refund", "replacement", "escalated", "denied")
+ACTIONS = ("refund", "replacement", "escalated", "denied", "needs_info")
 
 POLICY_CLAUSES = {
     "P1": "Refund window is 30 days from delivery",
@@ -153,7 +153,7 @@ CODE_SCORER_SCRIPT = textwrap.dedent(
                 return str(d["expected_action"]).lower(), d
         except Exception:
             pass
-        m = re.search(r"expected_action\W+(refund|replacement|escalated|denied)", s, re.I)
+        m = re.search(r"expected_action\W+(refund|replacement|escalated|denied|needs_info)", s, re.I)
         return (m.group(1).lower() if m else ""), {}
 
     def _decision(out_text):

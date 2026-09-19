@@ -557,5 +557,21 @@
       "P6"
     ],
     "notes": "A1047 (c_erin, mixed order: t-shirt + backordered mug). This claim is about the t-shirt only -> P6 -> deny $19; the mug in the same order would be refundable if claimed separately with its own evidence."
+  },
+  {
+    "id": "GC-31",
+    "category": "needs_info",
+    "order_id": "A9999",
+    "customer_id": "c_unknown",
+    "sku": null,
+    "amount": 0,
+    "delivered_days_ago": null,
+    "in_stock": null,
+    "message": "My order A9999 arrived damaged, please refund me.",
+    "evidence_video_id": "vid_stub_mug_alice",
+    "evidence_summary_stub": "n/a \u2014 order not found",
+    "expected_action": "needs_info",
+    "expected_clauses": [],
+    "notes": "Unknown order id: the agent must ask for the right order number and must not touch the ledger."
   }
 ]
