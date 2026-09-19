@@ -13,6 +13,14 @@ const en = {
   "status.store": "store",
   "status.stub": "Memories.ai stub",
   "status.stubLive": "Memories.ai live",
+  "status.demoData": "Demo data",
+  "status.dataLive": "Live",
+  "status.dataSource": "Data source",
+
+  // Decision mode (product words for deterministic / llm)
+  "mode.policy": "Policy engine",
+  "mode.ai": "AI model",
+  "mode.label": "Decided by",
   "banner.offline": "Backend unreachable — start `edgeone makers dev` on :8088. ClaimSight keeps retrying.",
   "footer.partners": "EdgeOne Makers · Memories.ai · AgentX · WorkBuddy · VeloDB",
   "footer.store": "Northwind Home · demo store",
@@ -32,6 +40,7 @@ const en = {
 
   // Composer
   "composer.placeholder": "Describe the problem with your order…",
+  "composer.placeholderShort": "What went wrong?",
   "composer.hint": "Enter to file · Shift+Enter for a new line",
   "composer.hintQueued": "Your claim will be filed automatically as soon as the evidence is indexed.",
   "composer.file": "File claim",
@@ -39,6 +48,7 @@ const en = {
   "composer.stop": "Stop",
   "composer.scenarios": "Scenarios",
   "composer.newClaim": "New claim",
+  "composer.checking": "ClaimSight is checking…",
 
   // Scenario presets (order id + message)
   "preset.mug": "Chipped mug",
@@ -71,6 +81,7 @@ const en = {
   "decision.action.replacement": "Replacement sent",
   "decision.action.escalated": "Escalated to a teammate",
   "decision.action.denied": "Claim denied",
+  "decision.action.needs_info": "Needs more information",
   "decision.action.unknown": "Decision",
   "decision.evidence": "Evidence",
   "decision.policy": "Policy clauses",
@@ -93,11 +104,19 @@ const en = {
   "decision.recommended": "Agent recommends: {0}",
   "decision.by.agent": "decided by agent",
   "decision.by.human": "decided by human",
+  "decision.customer": "Customer",
+  "decision.matches": "Matches",
+  "decision.filedBy": "filed by",
+  "decision.openDesk": "Open in Refund Desk",
+  "decision.more": "more",
+  "decision.less": "less",
+  "decision.needsInfoHint": "We could not match this order. Check the order number and file the claim again.",
 
   // View tabs
   "tabs.label": "Views",
   "tabs.chat": "Chat",
   "tabs.desk": "Refund Desk",
+  "tabs.deskShort": "Desk",
   "tabs.pending": "{0} pending review",
 
   // Decision trace panel
@@ -105,12 +124,14 @@ const en = {
   "trace.idle": "Waiting for a claim",
   "trace.running": "Deciding…",
   "trace.done": "Decided in {0}",
+  "trace.restored": "Decision on record",
   "trace.stopped": "Stopped",
   "trace.error": "Run failed",
   "trace.claim": "Claim",
-  "trace.mode.deterministic": "deterministic",
-  "trace.mode.llm": "model",
   "trace.evidence": "Evidence",
+  "trace.clip": "Clip",
+  "trace.frameCaption": "Frame at 0:03 · Memories.ai",
+  "trace.frameAlt": "Still frame from the evidence clip",
   "trace.evidenceNone": "No clip attached yet — attach a video or pick a demo clip in the composer.",
   "trace.evidenceSummary": "What Memories.ai saw",
   "trace.evidencePending": "The summary appears once the agent has inspected the clip.",
@@ -159,6 +180,7 @@ const en = {
   "desk.filter.approved": "Approved",
   "desk.filter.replacement": "Replacement",
   "desk.filter.denied": "Denied",
+  "desk.filter.needs_info": "Needs info",
   "desk.col.claim": "Claim",
   "desk.col.order": "Order",
   "desk.col.customer": "Customer",
@@ -179,6 +201,8 @@ const en = {
   "desk.emptyCta": "Go to Chat",
   "desk.emptyFiltered": "No claims match this filter.",
   "desk.loading": "Loading claims…",
+  "desk.openRow": "Open claim {0}",
+  "desk.thumbAlt": "Evidence frame",
   "desk.byAgent": "agent",
   "desk.byHuman": "human",
   "desk.unchecked": "not checked",
@@ -189,7 +213,9 @@ const en = {
   "desk.status.approved": "Approved",
   "desk.status.denied": "Denied",
   "desk.status.replacement": "Replacement",
+  "desk.status.needs_info": "Needs info",
   "desk.detail.title": "Claim",
+  "desk.detail.claimId": "Claim id",
   "desk.detail.evidence": "Evidence summary",
   "desk.detail.damage": "Damage assessment",
   "desk.detail.fraud": "Fraud matches",
@@ -207,10 +233,20 @@ const en = {
   "desk.detail.mode": "Mode",
   "desk.detail.recommended": "Agent recommends",
   "desk.detail.pendingHint": "This claim is waiting for you. Approving executes the agent's recommendation through the ledger.",
+  "desk.detail.pendingHintNamed": "{0}'s claim is waiting for you. Approving executes the agent's recommendation through the ledger.",
+  "desk.detail.needsInfoHint": "Waiting on the customer — the order could not be found. Nothing to decide here yet.",
   "desk.detail.close": "Close",
   "desk.submitError": "Decision failed",
   "desk.submitting": "Submitting…",
   "desk.decided": "Decision recorded",
+  "desk.toast.approved": "Refund approved · {0}",
+  "desk.toast.replacement": "Replacement approved · {0}",
+  "desk.toast.denied": "Claim denied · {0}",
+  "desk.toast.failed": "Decision failed · {0}",
+  "desk.toast.resetDone": "Demo data reset",
+  "desk.toast.resetFailed": "Reset failed · {0}",
+  "toast.dismiss": "Dismiss",
+  "toast.label": "Notifications",
 
   // Web search activity (in-bubble chip) — kept from the template
   "webSearch.error.wsaMissing": "Web search unavailable — needs a {0} API key",
@@ -246,7 +282,7 @@ const en = {
 
   // Aria labels
   "aria.send": "File claim",
-  "aria.clearHistory": "Delete this conversation",
+  "aria.clearHistory": "Clear conversation",
   "aria.stopGeneration": "Stop",
 } as const;
 

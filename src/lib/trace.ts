@@ -35,8 +35,13 @@ export interface TraceState {
   startedAt?: number;
   endedAt?: number;
   claimId?: string;
+  /** Human-friendly claim number ("C-A1043-F809") when the backend announces it. */
+  displayId?: string;
+  customerName?: string;
   /** `deterministic` | `llm` (only the deterministic runner announces it). */
   mode?: string;
+  /** "Policy engine" | "AI model · <model>" when the backend announces it. */
+  modeLabel?: string;
   steps: TraceStep[];
   toolCalls: Array<{ tool: string; at: number; step: StepId | null }>;
   decision?: Decision;
@@ -127,7 +132,10 @@ export function traceReducer(state: TraceState, action: TraceAction): TraceState
         case 'claim': {
           const claimId = typeof data?.claim_id === 'string' ? data.claim_id : state.claimId;
           const mode = typeof data?.mode === 'string' ? data.mode : state.mode;
-          return { ...state, claimId, mode };
+          const displayId = typeof data?.display_id === 'string' ? data.display_id : state.displayId;
+          const customerName = typeof data?.customer_name === 'string' ? data.customer_name : state.customerName;
+          const modeLabel = typeof data?.mode_label === 'string' ? data.mode_label : state.modeLabel;
+          return { ...state, claimId, mode, displayId, customerName, modeLabel };
         }
 
         case 'tool_called': {
@@ -168,7 +176,10 @@ export function traceReducer(state: TraceState, action: TraceAction): TraceState
           let steps = settleRunning(state.steps, at);
           // The decision exists, so the record step happened even if we never saw its tool_called.
           steps = steps.map(s => (s.id === 'record' && s.status === 'pending' ? { ...s, status: 'done', startedAt: at, endedAt: at } : s));
-          return { ...state, decision, decisionStatus, traceId, agentxEmitted, steps };
+          const displayId = (typeof data?.display_id === 'string' ? data.display_id : undefined) ?? decision?.display_id ?? state.displayId;
+          const customerName = (typeof data?.customer_name === 'string' ? data.customer_name : undefined) ?? decision?.customer_name ?? state.customerName;
+          const modeLabel = (typeof data?.mode_label === 'string' ? data.mode_label : undefined) ?? decision?.mode_label ?? state.modeLabel;
+          return { ...state, decision, decisionStatus, traceId, agentxEmitted, steps, displayId, customerName, modeLabel };
         }
 
         case 'error': {

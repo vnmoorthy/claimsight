@@ -15,8 +15,8 @@ import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
-  getOrder, getPolicy, nowIso, round2,
-  type ClaimAction, type ClaimRecord, type ClaimsStore, type Env, type FraudMatch,
+  getOrder, getPolicy, nowIso, round2, displayIdFor, modeLabelFor, orderNotFoundMessage,
+  type AgentMode, type ClaimAction, type ClaimRecord, type ClaimsStore, type Env, type FraudMatch,
   type OrderRecord, type Policy, type ToolCallTrace, type VideoIndexEntry,
 } from '../_kv';
 import { MemoriesError, type CaptionSegment, type MemoriesClient } from '../_memories';
@@ -43,6 +43,8 @@ export interface ClaimsToolDeps {
   claimId: string;
   conversationId: string;
   requestStartedAt: number;
+  /** 'deterministic' (policy engine) or 'llm'; drives mode_label on records and the block. */
+  mode: AgentMode;
   model: string;
   hints: { orderId?: string; videoId?: string; email?: string; evidenceSummary?: string };
   logger: Logger;
@@ -51,13 +53,23 @@ export interface ClaimsToolDeps {
 
 export interface DecisionBlock {
   claim_id: string;
+  /** Friendly reference shown to the customer and on the Decision Card (C-A1043-F809). */
+  display_id: string;
+  order_id: string;
+  customer_name?: string;
   action: ClaimAction;
   amount: number;
   policy_clauses: string[];
+  /** One plain-English sentence (no internal ids) — what the Decision Card shows as the reason. */
+  reason: string;
   evidence: string;
+  /** Same-origin poster frame of the evidence clip, or null when no video was inspected. */
+  evidence_frame_url: string | null;
   fraud_matches: number;
   txn_id: string | null;
   latency_ms: number;
+  mode: AgentMode;
+  mode_label: string;
 }
 
 export interface EvidenceResult {
@@ -70,7 +82,9 @@ export interface EvidenceResult {
   damage_confirmed: boolean;
   no_damage_statement: boolean;
   looks_worn: boolean;
+  /** Poster frame (the t=3 frame when the clip has one, else the first frame). */
   frame_url: string | null;
+  frames: Array<{ t: number; url: string }>;
   evidence_line: string;
   stubbed: boolean;
   error?: string;
@@ -87,16 +101,40 @@ export interface FraudResult {
   reason: string;
 }
 
+/** Why a claim cannot proceed yet; the wrapper turns this into a `needs_info` record + block. */
+export interface NeedsInfo {
+  kind: 'order_not_found' | 'evidence_missing';
+  order_id?: string;
+  /** Plain-English reason for the desk (no ids). */
+  reason: string;
+  /** The sentence the customer sees. */
+  customer_message: string;
+}
+
 export interface ClaimsToolState {
   claimId: string;
+  /** Friendly reference (C-<order>-<hex>); the order part is filled in by lookup_order. */
+  displayId: string;
+  modeLabel: string;
   order: OrderRecord | null;
   policy: Policy | null;
   evidence: EvidenceResult | null;
   fraud: FraudResult | null;
   txn: { txn_id: string; amount: number; method: 'refund' | 'replacement'; status: string } | null;
-  escalation: { reason: string; recommended_action: string; amount?: number } | null;
+  escalation: { reason: string; recommended_action: string; amount?: number; summary?: string } | null;
+  needsInfo: NeedsInfo | null;
   recorded: { claim: ClaimRecord; block: DecisionBlock; trace_id?: string; agentx_emitted: boolean } | null;
   toolCalls: ToolCallTrace[];
+}
+
+export interface ClaimsToolSet {
+  tools: Array<SdkMcpToolDefinition<any>>;
+  state: ClaimsToolState;
+  /**
+   * Record the claim as `needs_info` (unknown order / no evidence) so the desk sees the
+   * conversation, with NO ledger side effects. Idempotent; a no-op when a decision was recorded.
+   */
+  finalizeNeedsInfo(info?: NeedsInfo): Promise<{ block: DecisionBlock; claim: ClaimRecord; recorded: boolean } | null>;
 }
 
 type ToolOutcome = { result: unknown; isError?: boolean };
@@ -110,12 +148,43 @@ function preview(value: unknown, max = 600): string {
   }
 }
 
-export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpToolDefinition<any>>; state: ClaimsToolState } {
+function money(n: number): string {
+  return `$${(Math.round(n * 100) / 100).toFixed(2)}`;
+}
+
+/** "White ceramic mug" → "mug", "Over-ear headphones" → "headphones" (for one-line summaries). */
+export function shortItemLabel(name: string | undefined): string {
+  const words = (name ?? '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return words[words.length - 1] ?? 'item';
+}
+
+/** Customer-safe explanation of a ledger rejection (codes stay in `error`). */
+function ledgerReason(method: 'refund' | 'replacement', code: string | undefined, body: Record<string, any>, limit?: number): string {
+  const what = method === 'refund' ? 'Refund' : 'Replacement';
+  switch (code) {
+    case 'requires_human_approval': {
+      const amount = typeof body.amount === 'number' ? money(body.amount) : 'this amount';
+      const cap = typeof body.limit === 'number' ? money(body.limit) : typeof limit === 'number' ? money(limit) : 'the auto-approve limit';
+      return `${what} needs a teammate: ${amount} is above the ${cap} auto-approve limit`;
+    }
+    case 'order_refund_exhausted': return `${what} needs a teammate: a refund was already issued for this order`;
+    case 'amount_exceeds_order_total': return `${what} needs a teammate: the amount is more than the order total`;
+    case 'out_of_stock': return 'Replacement is out of stock, so a refund is offered instead';
+    case 'sku_not_in_order': return `${what} needs a teammate: that item is not part of this order`;
+    case 'order_not_found': return `${what} needs a teammate: the order could not be found`;
+    default: return `${what} needs a teammate: the payments service declined it`;
+  }
+}
+
+export function createClaimsTools(deps: ClaimsToolDeps): ClaimsToolSet {
   const { env, store, memories, logger } = deps;
   const doFetch = deps.fetchImpl ?? fetch;
   const state: ClaimsToolState = {
-    claimId: deps.claimId, order: null, policy: null, evidence: null, fraud: null,
-    txn: null, escalation: null, recorded: null, toolCalls: [],
+    claimId: deps.claimId,
+    displayId: displayIdFor(deps.claimId, deps.hints.orderId ?? ''),
+    modeLabel: modeLabelFor(deps.mode, deps.model),
+    order: null, policy: null, evidence: null, fraud: null,
+    txn: null, escalation: null, needsInfo: null, recorded: null, toolCalls: [],
   };
 
   // ── plumbing ─────────────────────────────────────────────────────────────
@@ -183,11 +252,14 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
     const latency = Date.now() - deps.requestStartedAt;
     return {
       claim_id: deps.claimId,
+      display_id: state.displayId,
       order_id: order.order_id,
       customer_id: order.customer_id,
+      customer_name: order.customer_name,
       sku: input.sku || pickSku(order, ev),
       video_id: ev?.video_id ?? deps.hints.videoId ?? '',
       evidence_summary: input.evidence_summary || ev?.evidence_line || deps.hints.evidenceSummary?.slice(0, 300) || '',
+      evidence_frame_url: ev?.frame_url ?? null,
       damage_assessment: ev
         ? (ev.ready
           ? (ev.damage_confirmed ? `Damage visible: ${ev.damage_observed.join(', ')}` : 'No damage visible in evidence')
@@ -204,6 +276,8 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
         by: 'agent',
         txn_id: input.txn_id,
         recommended_action: input.recommended_action,
+        // Reviewer paragraph from escalate(summary) — shown on the desk; survives record_decision's rebuild.
+        note: input.action === 'escalated' ? state.escalation?.summary : undefined,
       },
       status: statusForAction(input.action),
       created_at: new Date(deps.requestStartedAt).toISOString(),
@@ -212,20 +286,26 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
       conversation_id: deps.conversationId,
       tool_calls: state.toolCalls.slice(),
       model: deps.model,
+      mode: deps.mode,
+      mode_label: state.modeLabel,
     };
   }
 
+  /**
+   * Map a matched video back to the claim that submitted it. The cloud-function store is the
+   * source of truth for recorded claims (locally the agent and the functions keep separate
+   * in-memory maps), so ask it first via /claims-list (never routed to the agent) and fall back
+   * to the agent-local video_index (seeded stubs) when nothing has been recorded yet.
+   */
   async function resolveVideoIndex(videoId: string): Promise<VideoIndexEntry | null> {
-    const local = await store.get<VideoIndexEntry>(`video_index:${videoId}`);
-    if (local) return local;
     try {
-      const res = await callSelf(`/claims?video_id=${encodeURIComponent(videoId)}&limit=1`, 'GET');
+      const res = await callSelf(`/claims-list?video_id=${encodeURIComponent(videoId)}&limit=1`, 'GET');
       const c = Array.isArray(res.body?.claims) ? res.body.claims[0] : undefined;
-      if (c && c.claim_id) return { claim_id: c.claim_id, order_id: c.order_id, customer_id: c.customer_id };
+      if (c && c.claim_id && c.status !== 'needs_info') return { claim_id: c.claim_id, order_id: c.order_id, customer_id: c.customer_id };
     } catch (e) {
-      logger.error('[fraud_check] /claims lookup failed:', e);
+      logger.error('[fraud_check] /claims-list lookup failed:', e);
     }
-    return null;
+    return store.get<VideoIndexEntry>(`video_index:${videoId}`);
   }
 
   async function notifySlack(text: string): Promise<{ sent: boolean; error?: string }> {
@@ -244,7 +324,9 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
     }
   }
 
-  const uiBase = (env.UI_BASE_URL?.trim() || deps.selfBaseUrl).replace(/\/+$/, '');
+  // Public UI origin for the Slack deep link (PUBLIC_UI_URL; UI_BASE_URL kept as a legacy alias).
+  const uiBase = (env.PUBLIC_UI_URL?.trim() || env.UI_BASE_URL?.trim() || 'http://localhost:5173').replace(/\/+$/, '');
+  const deskUrl = (claimId: string) => `${uiBase}/#desk?claim=${encodeURIComponent(claimId)}`;
 
   // ── tools ────────────────────────────────────────────────────────────────
 
@@ -258,16 +340,29 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
     traced<{ order_id: string; email?: string }>('lookup_order', async ({ order_id, email }) => {
       const order = await getOrder(store, order_id);
       if (!order) {
-        return { result: { found: false, order_id, message: `Order ${order_id} was not found. Ask the customer to double-check the order number; do not record a decision.` } };
+        const customerMessage = orderNotFoundMessage(order_id);
+        state.needsInfo = { kind: 'order_not_found', order_id, reason: 'Order number not found; waiting for the customer to confirm it', customer_message: customerMessage };
+        return {
+          result: {
+            found: false,
+            order_id,
+            customer_message: customerMessage,
+            instruction: 'Reply to the customer with customer_message and stop. Do not call any other tool and do not record a decision; the claim is parked as needs_info automatically.',
+          },
+        };
       }
       const pol = await policy();
       state.order = order;
+      state.displayId = displayIdFor(deps.claimId, order.order_id);
+      state.needsInfo = null;
       const facts = deriveOrderFacts(order, pol);
       const { scenario: _scenario, ...publicOrder } = order;
       void _scenario;
       return {
         result: {
           found: true,
+          display_id: state.displayId,
+          customer_name: order.customer_name,
           email_matches: email ? email.trim().toLowerCase() === order.email.toLowerCase() : undefined,
           order: { ...publicOrder, items: facts.items },
           days_since_delivery: facts.days_since_delivery,
@@ -289,7 +384,7 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
 
   const inspectEvidence = tool(
     'inspect_evidence',
-    'Watch the customer evidence video through Memories.ai: returns the AI description, a timeline of captions, the products seen, the damage observed (with damage_confirmed), whether apparel looks worn, and a frame_url used by fraud_check.',
+    'Watch the customer evidence video through Memories.ai: returns the AI description, a timeline of captions, the products seen, the damage observed (with damage_confirmed), whether apparel looks worn, the poster frames (frame_url / frames) used by fraud_check and the Decision Card.',
     { video_id: z.string().describe('Evidence video id (vid_…)') },
     traced<{ video_id: string }>('inspect_evidence', async ({ video_id }) => {
       try {
@@ -302,6 +397,11 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
         const products = extractProducts(text, state.order);
         const damage = extractDamage(text);
         const firstDamage = caption.segments.find(s => extractDamage(s.text).length > 0)?.start;
+        const frames = moment.frames
+          .filter(f => f && typeof f.url === 'string' && f.url)
+          .map(f => ({ t: Number(f.t) || 0, url: f.url }));
+        // The t=3 frame is the damage close-up in every demo clip; fall back to the first frame.
+        const poster = frames.find(f => f.t === 3) ?? frames[0] ?? null;
         const ev: EvidenceResult = {
           video_id,
           ready: true,
@@ -312,7 +412,8 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
           damage_confirmed: damage.length > 0,
           no_damage_statement: mentionsNoDamage(text),
           looks_worn: looksWorn(text),
-          frame_url: moment.frames[0]?.url ?? null,
+          frame_url: poster?.url ?? null,
+          frames,
           evidence_line: evidenceLine(products, damage, firstDamage),
           stubbed: memories.stubbed,
         };
@@ -322,9 +423,10 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
         if (e instanceof MemoriesError && (e.status === 409 || e.status === 404)) {
           const ev: EvidenceResult = {
             video_id, ready: false, description: '', timeline: [], products_seen: [], damage_observed: [],
-            damage_confirmed: false, no_damage_statement: false, looks_worn: false, frame_url: null,
+            damage_confirmed: false, no_damage_statement: false, looks_worn: false, frame_url: null, frames: [],
             evidence_line: 'evidence not available', stubbed: memories.stubbed,
-            error: e.code ?? (e.status === 404 ? 'video_not_found' : 'video_not_ready'), message: e.message,
+            error: e.code ?? (e.status === 404 ? 'video_not_found' : 'video_not_ready'),
+            message: e.status === 404 ? 'The evidence video could not be found' : 'The evidence video is still being processed',
           };
           state.evidence = ev;
           return { result: ev };
@@ -357,11 +459,11 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
       const collection = env.MEMORIES_CLAIMS_COLLECTION?.trim() || (memories.stubbed ? 'col_stub_claims' : '');
       const base = { checked: false, threshold, candidates: 0, matches: [] as FraudMatch[], unmapped_hits: [] as Array<{ video_id: string; score: number }>, is_suspicious: false };
       if (!frameUrl) {
-        state.fraud = { ...base, reason: 'No frame available for this video; similarity search skipped' };
+        state.fraud = { ...base, reason: 'No still frame was available for this video, so the similarity check was skipped' };
         return { result: state.fraud };
       }
       if (!collection) {
-        state.fraud = { ...base, reason: 'MEMORIES_CLAIMS_COLLECTION is not configured; similarity search skipped' };
+        state.fraud = { ...base, reason: 'The evidence collection is not configured, so the similarity check was skipped' };
         return { result: state.fraud };
       }
       const hits = await memories.searchByImage({ collectionId: collection, imageUrl: frameUrl, topK: 10 });
@@ -372,12 +474,27 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
         if (hit.score < threshold) continue;
         const entry = await resolveVideoIndex(hit.video_id);
         if (entry) {
-          matches.push({ video_id: hit.video_id, claim_id: entry.claim_id, score: Math.round(hit.score * 1000) / 1000, customer_id: entry.customer_id, order_id: entry.order_id });
+          const matchedOrder = entry.order_id ? await getOrder(store, entry.order_id) : null;
+          matches.push({
+            video_id: hit.video_id,
+            claim_id: entry.claim_id,
+            display_id: displayIdFor(entry.claim_id, entry.order_id ?? ''),
+            score: Math.round(hit.score * 1000) / 1000,
+            customer_id: entry.customer_id,
+            customer_name: matchedOrder?.customer_name,
+            order_id: entry.order_id,
+          });
         } else {
           unmapped.push({ video_id: hit.video_id, score: Math.round(hit.score * 1000) / 1000 });
         }
       }
       const suspicious = matches.filter(m => m.customer_id !== order?.customer_id || (m.order_id && m.order_id !== order_id));
+      // Product voice: no video ids, customer ids or claim ids — those stay in `matches[]`.
+      const describe = (m: FraudMatch) => {
+        const who = m.customer_id !== order?.customer_id ? 'another customer' : 'this customer';
+        const which = m.order_id ? `order ${m.order_id}` : 'another order';
+        return `footage submitted for ${which} by ${who} (similarity ${m.score.toFixed(2)})`;
+      };
       const result: FraudResult = {
         checked: true,
         threshold,
@@ -386,10 +503,10 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
         unmapped_hits: unmapped,
         is_suspicious: suspicious.length > 0,
         reason: suspicious.length
-          ? `Evidence matches ${suspicious.map(m => `${m.video_id} (score ${m.score}, customer ${m.customer_id}, order ${m.order_id ?? '?'})`).join('; ')} submitted by a different account/order (${pol.clauses.P5 ?? 'P5'})`
+          ? `Evidence matches ${suspicious.map(describe).join('; ')}`
           : matches.length
-            ? 'Only matches from the same customer and order'
-            : 'No matching evidence from other accounts',
+            ? 'Evidence only matches this customer’s own earlier submission for this order'
+            : 'No matching evidence from other customers',
       };
       state.fraud = result;
       return { result };
@@ -414,8 +531,10 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
       const code = res.body?.error;
       const nextStep = code === 'requires_human_approval'
         ? 'Do not retry. Call escalate with recommended_action "refund" and this amount, then record_decision with action "escalated".'
-        : 'Do not retry blindly; explain the problem to the customer or escalate.';
-      return { result: { ok: false, http_status: res.status, ...res.body, next_step: nextStep } };
+        : 'Do not retry. Call escalate with recommended_action "refund" (use `reason` below as the escalation reason), then record_decision with action "escalated".';
+      const { message: detail, ...rest } = res.body;
+      // `reason` is the customer-safe sentence; the server's technical message moves to `detail`.
+      return { result: { ok: false, http_status: res.status, ...rest, detail, reason: ledgerReason('refund', code, res.body, state.policy?.auto_approve_limit), next_step: nextStep } };
     }),
   );
 
@@ -439,8 +558,9 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
         ? 'The item cannot be replaced; call execute_refund for its line total instead (cite P4 as considered).'
         : code === 'requires_human_approval'
           ? 'Do not retry. Call escalate with recommended_action "replacement", then record_decision with action "escalated".'
-          : 'Do not retry blindly; explain the problem to the customer or escalate.';
-      return { result: { ok: false, http_status: res.status, ...res.body, next_step: nextStep } };
+          : 'Do not retry. Call escalate with recommended_action "replacement" (use `reason` below as the escalation reason), then record_decision with action "escalated".';
+      const { message: detail, ...rest } = res.body;
+      return { result: { ok: false, http_status: res.status, ...rest, detail, reason: ledgerReason('replacement', code, res.body, state.policy?.auto_approve_limit), next_step: nextStep } };
     }),
   );
 
@@ -464,32 +584,36 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
         const ev = state.evidence;
         const item = state.order.items.find(i => i.sku === pickSku(state.order!, ev)) ?? state.order.items[0];
         const amountAtStake = round2(amount ?? (item ? item.unit_price * item.qty : state.order.total));
-        state.escalation = { reason, recommended_action, amount: amountAtStake };
+        state.escalation = { reason, recommended_action, amount: amountAtStake, summary: summary?.trim() || undefined };
         const claim = buildClaimRecord({
           action: 'escalated', amount: amountAtStake, reason, policy_clauses: policy_clauses ?? [], recommended_action,
         });
         const rec = await callSelf('/claims-record', 'POST', { claim });
+        // One product-voice Slack line; ids and scores stay in the claim record.
         const fraudLine = state.fraud?.matches.length
-          ? state.fraud.matches.map(m => `${m.video_id} (score ${m.score}, ${m.customer_id}/${m.order_id ?? '?'})`).join(', ')
+          ? `matches ${state.fraud.matches.map(m => `${m.display_id ?? displayIdFor(m.claim_id, m.order_id ?? '')} (similarity ${m.score.toFixed(2)})`).join(', ')}`
           : 'none';
+        const who = state.order.customer_name || state.order.email;
         const text = [
-          `*ClaimSight escalation* — claim ${deps.claimId} · order ${state.order.order_id} · ${state.order.email}`,
-          summary ?? reason,
-          `Recommended: ${recommended_action}${amountAtStake ? ` ($${amountAtStake.toFixed(2)})` : ''} · Clauses: ${(policy_clauses ?? []).join(', ') || 'n/a'}`,
-          `Evidence: ${ev?.evidence_line ?? 'no video inspected'}${ev?.description ? ` — ${ev.description.slice(0, 220)}` : ''}`,
-          `Fraud matches: ${fraudLine}`,
-          `Reply in WorkBuddy Refund Desk or open ${uiBase}/desk`,
-        ].join('\n');
+          `ClaimSight needs a decision — ${state.displayId}`,
+          who,
+          `${money(amountAtStake)} ${shortItemLabel(item?.name)}`,
+          `Reason: ${reason.trim().replace(/\.$/, '')}`,
+          `Fraud: ${fraudLine}`,
+          `Open the desk: ${deskUrl(deps.claimId)}`,
+        ].join(' · ');
         const slack = await notifySlack(text);
         return {
           result: {
             status: 'pending_review',
             claim_id: deps.claimId,
+            display_id: state.displayId,
             recorded: rec.ok,
             record_error: rec.ok ? undefined : rec.body?.error ?? `http ${res(rec)}`,
             slack_notified: slack.sent,
             slack_error: slack.error,
-            desk_url: `${uiBase}/desk`,
+            slack_text: text,
+            desk_url: deskUrl(deps.claimId),
             next_step: 'Now call record_decision with action "escalated" and the same amount/clauses.',
           },
         };
@@ -542,13 +666,20 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
         const emit = await callSelf('/agentx-emit', 'POST', { claim: stored });
         const block: DecisionBlock = {
           claim_id: deps.claimId,
+          display_id: claim.display_id,
+          order_id: claim.order_id,
+          customer_name: claim.customer_name,
           action,
           amount: finalAmount,
           policy_clauses,
+          reason,
           evidence: claim.evidence_summary,
+          evidence_frame_url: claim.evidence_frame_url ?? null,
           fraud_matches: state.fraud?.matches.length ?? 0,
           txn_id: txnId ?? null,
           latency_ms: claim.latency_ms,
+          mode: deps.mode,
+          mode_label: state.modeLabel,
         };
         state.recorded = { claim: stored, block, trace_id: emit.body?.trace_id, agentx_emitted: !!emit.body?.emitted };
         return {
@@ -556,6 +687,7 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
             recorded: rec.ok,
             record_error: rec.ok ? undefined : rec.body?.error ?? `http ${rec.status}`,
             claim_id: deps.claimId,
+            display_id: claim.display_id,
             status: claim.status,
             trace_id: emit.body?.trace_id,
             agentx_emitted: !!emit.body?.emitted,
@@ -567,8 +699,79 @@ export function createClaimsTools(deps: ClaimsToolDeps): { tools: Array<SdkMcpTo
     ),
   );
 
+  // ── needs_info (not a model-callable tool) ───────────────────────────────
+
+  async function finalizeNeedsInfo(info?: NeedsInfo): Promise<{ block: DecisionBlock; claim: ClaimRecord; recorded: boolean } | null> {
+    if (state.recorded) return null;
+    const needs = info ?? state.needsInfo;
+    if (!needs) return null;
+    state.needsInfo = needs;
+    const orderId = (needs.order_id ?? state.order?.order_id ?? deps.hints.orderId ?? '').trim();
+    state.displayId = displayIdFor(deps.claimId, orderId);
+    const claim: ClaimRecord = {
+      claim_id: deps.claimId,
+      display_id: state.displayId,
+      order_id: orderId,
+      customer_id: state.order?.customer_id ?? '',
+      customer_name: state.order?.customer_name,
+      sku: state.order?.items[0]?.sku ?? '',
+      video_id: deps.hints.videoId ?? '',
+      evidence_summary: '',
+      evidence_frame_url: null,
+      damage_assessment: needs.kind === 'evidence_missing' ? 'No evidence attached yet' : 'Order not found',
+      fraud: { checked: false, matches: [] },
+      decision: { action: 'needs_info', amount: 0, reason: needs.reason, policy_clauses: [], by: 'agent' },
+      status: 'needs_info',
+      created_at: new Date(deps.requestStartedAt).toISOString(),
+      latency_ms: Date.now() - deps.requestStartedAt,
+      conversation_id: deps.conversationId,
+      tool_calls: state.toolCalls.slice(),
+      model: deps.model,
+      mode: deps.mode,
+      mode_label: state.modeLabel,
+    };
+    let stored = claim;
+    let recorded = false;
+    let traceId: string | undefined;
+    let emitted = false;
+    // Without an order id there is nothing for the desk to attach the record to; the block still carries the outcome.
+    if (orderId) {
+      try {
+        const rec = await callSelf('/claims-record', 'POST', { claim });
+        recorded = rec.ok;
+        if (rec.ok && rec.body?.claim) stored = rec.body.claim as ClaimRecord;
+        else logger.error('[needs_info] record failed:', rec.status, preview(rec.body, 200));
+        const emit = await callSelf('/agentx-emit', 'POST', { claim: stored });
+        traceId = emit.body?.trace_id;
+        emitted = !!emit.body?.emitted;
+      } catch (e) {
+        logger.error('[needs_info] failed:', e);
+      }
+    }
+    const block: DecisionBlock = {
+      claim_id: deps.claimId,
+      display_id: state.displayId,
+      order_id: orderId,
+      customer_name: claim.customer_name,
+      action: 'needs_info',
+      amount: 0,
+      policy_clauses: [],
+      reason: needs.reason,
+      evidence: needs.kind === 'evidence_missing' ? 'no evidence attached' : 'order not found',
+      evidence_frame_url: null,
+      fraud_matches: 0,
+      txn_id: null,
+      latency_ms: claim.latency_ms,
+      mode: deps.mode,
+      mode_label: state.modeLabel,
+    };
+    state.recorded = { claim: stored, block, trace_id: traceId, agentx_emitted: emitted };
+    logger.log(`[needs_info] claim=${deps.claimId} display=${state.displayId} kind=${needs.kind} recorded=${recorded}`);
+    return { block, claim: stored, recorded };
+  }
+
   const tools: Array<SdkMcpToolDefinition<any>> = [
     lookupOrder, getPolicyTool, inspectEvidence, fraudCheck, executeRefund, createReplacement, escalate, recordDecision,
   ];
-  return { tools, state };
+  return { tools, state, finalizeNeedsInfo };
 }

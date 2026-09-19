@@ -11,9 +11,9 @@
  */
 
 import type { SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk';
-import type { ClaimAction, OrderRecord, Policy } from '../_kv';
+import { orderNotFoundMessage, type ClaimAction, type OrderRecord, type Policy } from '../_kv';
 import { evidenceLine, extractDamage, extractProducts, looksWorn } from '../_policy';
-import type { ClaimsToolState, DecisionBlock, Logger } from './_tools';
+import type { ClaimsToolSet, ClaimsToolState, DecisionBlock, Logger, NeedsInfo } from './_tools';
 
 export type DeterministicEvent =
   | { type: 'tool_called'; tool: string }
@@ -26,6 +26,8 @@ export interface DeterministicInput {
   hints: { orderId?: string; videoId?: string; email?: string; evidenceSummary?: string };
   tools: Array<SdkMcpToolDefinition<any>>;
   state: ClaimsToolState;
+  /** Parks the claim as needs_info (unknown order / no evidence) — no ledger side effects. */
+  finalizeNeedsInfo: ClaimsToolSet['finalizeNeedsInfo'];
   signal?: AbortSignal;
   logger: Logger;
 }
@@ -44,6 +46,8 @@ interface LookupResult {
   return_window_days?: number;
   auto_approve_limit?: number;
   email_matches?: boolean;
+  /** Present when found=false: the sentence to show the customer. */
+  customer_message?: string;
 }
 
 interface EvidenceFacts {
@@ -56,6 +60,8 @@ interface EvidenceFacts {
   evidence_line: string;
   first_damage_second?: number;
   error?: string;
+  /** Plain-English explanation when the video could not be reviewed. */
+  message?: string;
 }
 
 const REFUSES_REPLACEMENT = /\b(refund only|just (a|the|my) refund|money back|no replacement|don'?t want (a |the )?replacement|do not want (a |the )?replacement|not (a |the )?replacement)\b/i;
@@ -93,20 +99,38 @@ export async function* runDeterministicClaim(input: DeterministicInput): AsyncGe
     yield say(`${s} `);
   };
 
+  /**
+   * Park the claim as needs_info: say the one customer sentence, record the claim (when there is an
+   * order to attach it to) with NO ledger side effects, and end with a needs_info decision block.
+   */
+  const park = async function* (text: string, info?: NeedsInfo): AsyncGenerator<DeterministicEvent, void, unknown> {
+    yield say(text);
+    const fin = await input.finalizeNeedsInfo(info);
+    let full = text;
+    if (fin) {
+      yield { type: 'decision', block: fin.block, status: 'needs_info', trace_id: state.recorded?.trace_id, agentx_emitted: !!state.recorded?.agentx_emitted };
+      const fenced = `\n\n\`\`\`decision\n${JSON.stringify(fin.block)}\n\`\`\`\n`;
+      yield say(fenced);
+      full += fenced;
+    }
+    logger.log(`[deterministic] claim=${state.claimId} parked=${info?.kind ?? state.needsInfo?.kind ?? '-'} recorded=${!!fin?.recorded}`);
+    yield { type: 'done', text: full, block: fin?.block ?? null, recorded: !!fin?.recorded };
+  };
+
   // 1. lookup_order
   const orderId = hints.orderId ?? extractOrderId(input.message);
   if (!orderId) {
-    const text = 'I can help with that. Could you tell me your order number (it looks like A1042) so I can find the purchase and review the claim?';
-    yield say(text);
-    yield { type: 'done', text, block: null, recorded: false };
+    yield* park(
+      'I can help with that. Could you tell me your order number (it looks like A1042) so I can find the purchase and review the claim?',
+      { kind: 'order_not_found', reason: 'No order number given; waiting for the customer to send it', customer_message: 'Waiting for the order number' },
+    );
     return;
   }
   yield { type: 'tool_called', tool: 'lookup_order' };
   const lookup = await call<LookupResult>('lookup_order', hints.email ? { order_id: orderId, email: hints.email } : { order_id: orderId });
   if (!lookup.found || !lookup.order) {
-    const text = `I couldn't find order ${orderId} in our system. Could you double-check the order number from your confirmation email and send it again?`;
-    yield say(text);
-    yield { type: 'done', text, block: null, recorded: false };
+    // lookup_order already parked the claim (state.needsInfo); the customer sees one plain sentence.
+    yield* park(lookup.customer_message ?? orderNotFoundMessage(orderId));
     return;
   }
   if (aborted()) return;
@@ -132,6 +156,7 @@ export async function* runDeterministicClaim(input: DeterministicInput): AsyncGe
       evidence_line: ev.evidence_line ?? 'evidence not available',
       first_damage_second: Array.isArray(ev.timeline) ? ev.timeline.find((s: { text: string }) => extractDamage(s.text).length > 0)?.start : undefined,
       error: ev.error,
+      message: ev.message,
     };
   } else if (hints.evidenceSummary) {
     const text = hints.evidenceSummary;
@@ -143,8 +168,11 @@ export async function* runDeterministicClaim(input: DeterministicInput): AsyncGe
     };
   } else {
     const text = `I found order ${order.order_id}. To review the claim I need to see the problem: please attach a short video (mp4 or mov) showing the item and the damage, and I'll take it from there.`;
-    yield say(text);
-    yield { type: 'done', text, block: null, recorded: false };
+    yield* park(text, {
+      kind: 'evidence_missing', order_id: order.order_id,
+      reason: 'No evidence attached; waiting for the customer to send a short video of the damage',
+      customer_message: text,
+    });
     return;
   }
   if (aborted()) return;
@@ -182,7 +210,7 @@ export async function* runDeterministicClaim(input: DeterministicInput): AsyncGe
     reason = 'Evidence shows the apparel has been worn';
   } else if (!evidence.damage_confirmed) {
     action = 'escalated'; clauses = ['P2']; recommended = 'deny';
-    reason = evidence.ready ? 'No damage is visible in the customer evidence' : `Evidence could not be reviewed (${evidence.error ?? 'not ready'})`;
+    reason = evidence.ready ? 'No damage is visible in the customer evidence' : (evidence.message ?? 'The evidence video could not be reviewed yet');
   } else if (fraud.is_suspicious) {
     action = 'escalated'; clauses = ['P5', 'P2']; recommended = 'deny';
     reason = fraud.reason || 'Evidence matches a video submitted by a different account';
@@ -205,17 +233,26 @@ export async function* runDeterministicClaim(input: DeterministicInput): AsyncGe
     yield { type: 'tool_called', tool: 'execute_refund' };
     const r = await call<Record<string, any>>('execute_refund', { order_id: order.order_id, amount, reason, claim_id: state.claimId });
     if (r.ok && r.txn_id) txnId = r.txn_id;
-    else { action = 'escalated'; recommended = 'refund'; execError = r.error ?? 'rejected'; clauses = r.error === 'requires_human_approval' ? ['P3', ...clauses] : clauses; reason = `${reason}; refund needs a human (${r.error ?? 'rejected'})`; }
+    else {
+      // The tool already phrased the rejection for customers ("Refund needs a teammate: …"); codes stay in r.error.
+      action = 'escalated'; recommended = 'refund'; execError = r.error ?? 'rejected';
+      clauses = r.error === 'requires_human_approval' ? ['P3', ...clauses] : clauses;
+      reason = r.reason ?? 'Refund needs a teammate: the payments service declined it';
+    }
   } else if (action === 'replacement') {
     yield { type: 'tool_called', tool: 'create_replacement' };
     const r = await call<Record<string, any>>('create_replacement', { order_id: order.order_id, sku: item.sku, reason, claim_id: state.claimId });
     if (r.ok && r.txn_id) txnId = r.txn_id;
     else if (r.error === 'out_of_stock') {
       yield { type: 'tool_called', tool: 'execute_refund' };
-      const rr = await call<Record<string, any>>('execute_refund', { order_id: order.order_id, amount, reason: `${reason}; replacement out of stock`, claim_id: state.claimId });
-      if (rr.ok && rr.txn_id) { action = 'refund'; txnId = rr.txn_id; reason = `${reason}; replacement out of stock, refunded instead`; }
-      else { action = 'escalated'; recommended = 'refund'; execError = rr.error ?? 'rejected'; reason = `${reason}; neither replacement nor refund could be executed (${rr.error ?? 'rejected'})`; }
-    } else { action = 'escalated'; recommended = 'replacement'; execError = r.error ?? 'rejected'; clauses = r.error === 'requires_human_approval' ? ['P3', ...clauses] : clauses; reason = `${reason}; replacement needs a human (${r.error ?? 'rejected'})`; }
+      const rr = await call<Record<string, any>>('execute_refund', { order_id: order.order_id, amount, reason: 'Damage confirmed; the replacement is out of stock, so a refund is issued instead', claim_id: state.claimId });
+      if (rr.ok && rr.txn_id) { action = 'refund'; txnId = rr.txn_id; reason = 'Damage confirmed; the replacement is out of stock, so a refund was issued instead'; }
+      else { action = 'escalated'; recommended = 'refund'; execError = rr.error ?? 'rejected'; reason = rr.reason ?? 'Refund needs a teammate: the payments service declined it'; }
+    } else {
+      action = 'escalated'; recommended = 'replacement'; execError = r.error ?? 'rejected';
+      clauses = r.error === 'requires_human_approval' ? ['P3', ...clauses] : clauses;
+      reason = r.reason ?? 'Replacement needs a teammate: the payments service declined it';
+    }
   }
   if (aborted()) return;
   if (action === 'escalated') {
@@ -280,12 +317,12 @@ export async function* runDeterministicClaim(input: DeterministicInput): AsyncGe
         const why = execError === 'order_refund_exhausted' ? 'a refund has already been issued against this order'
           : execError === 'amount_exceeds_order_total' ? 'the amount is more than the order total'
           : execError === 'out_of_stock' ? 'the replacement is out of stock and the refund could not be issued automatically'
-          : `the payments service declined the automatic ${recommended ?? 'refund'} (${execError})`;
+          : `the payments service declined the automatic ${recommended ?? 'refund'}`;
         yield* emit(`The damage is visible (P2: ${clauseText(policy, 'P2')}) and the claim is within policy, but ${why}, so I've handed it to a teammate to complete rather than guess.`);
       } else {
         yield* emit(`I couldn't see the damage in the evidence (P2: ${clauseText(policy, 'P2')}), so I've asked a teammate to take a closer look rather than decide on my own — if you have a clearer clip or another angle, reply with it and it will be added to the claim.`);
       }
-      yield* emit(`Your claim reference is ${state.claimId}; you'll hear back as soon as it's reviewed.`);
+      yield* emit(`Your claim reference is ${state.displayId}; you'll hear back as soon as it's reviewed.`);
       break;
   }
 

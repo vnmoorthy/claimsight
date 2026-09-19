@@ -32,7 +32,7 @@ do not retry blindly.
 
 1. **Fetch the queue**
 
-   `GET {CLAIMSIGHT_URL}/claims?status=pending_review`
+   `GET {CLAIMSIGHT_URL}/claims-list?status=pending_review`
 
    Response: a JSON array, newest first. Each claim looks like
 
@@ -72,7 +72,7 @@ do not retry blindly.
 
 4. **Apply each decision**
 
-   `POST {CLAIMSIGHT_URL}/claims/decision` with header `Content-Type: application/json` and body
+   `POST {CLAIMSIGHT_URL}/claims-decision` with header `Content-Type: application/json` and body
 
    ```json
    {"claim_id": "clm_7f2a", "decision": "approve", "note": "Manager: hinge crack confirmed, refund ok"}
@@ -86,7 +86,7 @@ do not retry blindly.
 5. **Post the summary to the connected Slack channel** (default `#refund-desk`, see `config.yaml`) using the format
    below. If Slack is not connected, show the same text in chat and say it was not posted.
 
-6. Close with "Anything else for the desk?" and offer `{CLAIMSIGHT_UI_URL}/desk` for the full table.
+6. Close with "Anything else for the desk?" and offer `{CLAIMSIGHT_UI_URL}/#desk` for the full table.
 
 ### Slack summary format
 
@@ -96,7 +96,7 @@ do not retry blindly.
 • A1043 · MUG-01 · $24.00 — *DENIED* — suspected fraud: matches c_alice's clip (0.94) (P5)
 • A1077 · TSHIRT-04 · $19.00 — *SKIPPED* — waiting for the customer's reply
 Totals: approved $129.00 (1) · denied 1 · skipped 1 · fraud flags 1 · still pending 1
-Desk: {CLAIMSIGHT_UI_URL}/desk
+Desk: {CLAIMSIGHT_UI_URL}/#desk
 ```
 
 Keep it to one line per claim; use `*APPROVED*`, `*DENIED*`, `*SKIPPED*`; always include the txn id for approvals.
@@ -106,7 +106,7 @@ Keep it to one line per claim; use `*APPROVED*`, `*DENIED*`, `*SKIPPED*`; always
 Schedule: every day at 09:00 (weekdays if the store is closed at weekends). Prompt for the automation:
 
 > Summarize yesterday's ClaimSight claims into a .docx. Call `GET {CLAIMSIGHT_URL}/stats` (counters + last claims)
-> and `GET {CLAIMSIGHT_URL}/claims` (all statuses), keep the claims whose `created_at` falls on yesterday's date, and
+> and `GET {CLAIMSIGHT_URL}/claims-list` (all statuses), keep the claims whose `created_at` falls on yesterday's date, and
 > compute: auto-approval rate (claims decided by the agent with action refund or replacement ÷ all claims), refunded $
 > (sum of `decision.amount` where action is refund and status is auto_approved or approved), fraud flags (claims with
 > at least one `fraud.matches` entry, list the matched customer ids), and the top damage types (count the
@@ -121,7 +121,7 @@ Fraud flags (who matched whom) · Top damage types · Escalated/denied table · 
 
 **Manager:** refund desk
 
-**Assistant:** *(GET {CLAIMSIGHT_URL}/claims?status=pending_review)*
+**Assistant:** *(GET {CLAIMSIGHT_URL}/claims-list?status=pending_review)*
 Three claims are waiting:
 
 1) Order A1050 · HDPH-02 · $129.00 · customer c_carol · waiting 2h
@@ -143,7 +143,7 @@ Approve, deny, or skip each? (Claim 2 has a fraud match — I will ask you to co
 
 **Manager:** approve 1, deny 2 — note "duplicate footage", skip 3
 
-**Assistant:** *(POST {CLAIMSIGHT_URL}/claims/decision ×2)*
+**Assistant:** *(POST {CLAIMSIGHT_URL}/claims-decision ×2)*
 Done. A1050 approved → txn_8f3a12 ($129.00 refunded). A1043 denied (note: duplicate footage). A1077 left pending.
 Posted to #refund-desk:
 

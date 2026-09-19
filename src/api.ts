@@ -636,16 +636,19 @@ export async function fetchClaimById(claimId: string, force = false): Promise<Cl
   return list.find(c => c.claim_id === claimId) ?? null;
 }
 
-/** GET /stats reduced to what the top bar needs: reachability, store backend, Memories.ai mode, queue size. */
+/** GET /stats reduced to what the top bar needs: reachability, data-source label, decision mode, queue size. */
 export async function fetchStatus(): Promise<BackendStatus> {
   try {
     const data = await requestJson<Record<string, unknown>>(API.stats, { method: 'GET' });
     const derived = (data.derived && typeof data.derived === 'object') ? data.derived as Record<string, unknown> : {};
     const stubRaw = data.memories_stubbed ?? data.memories_stub ?? data.memoriesStubbed;
+    const memoriesStubbed = typeof stubRaw === 'boolean' ? stubRaw : (stubRaw === 1 || stubRaw === '1' || stubRaw === 'true' ? true : undefined);
     return {
       online: true,
       backend: asString(data.backend) ?? asString(data.storage),
-      memoriesStubbed: typeof stubRaw === 'boolean' ? stubRaw : (stubRaw === 1 || stubRaw === '1' || stubRaw === 'true' ? true : undefined),
+      memoriesStubbed,
+      backendLabel: asString(data.backend_label) ?? asString(data.backendLabel),
+      modeLabel: asString(data.mode_label) ?? asString(data.modeLabel),
       pendingReview: asNumber(derived.pending_review) ?? asNumber(data.pending_review),
       checkedAt: Date.now(),
     };

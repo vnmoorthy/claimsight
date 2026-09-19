@@ -1,6 +1,6 @@
 import type { ClaimAction } from '../types';
 import { useT, type MessageKeys } from '../i18n';
-import { IconCheck, IconFlag, IconSwap, IconX, IconDot } from './icons';
+import { IconCheck, IconFlag, IconHelp, IconSwap, IconX, IconDot } from './icons';
 import styles from './ActionBadge.module.css';
 
 interface Props {
@@ -21,6 +21,7 @@ export default function ActionBadge({ action, label, size = 'md', className = ''
     action === 'replacement' ? IconSwap :
     action === 'escalated' ? IconFlag :
     action === 'denied' ? IconX :
+    action === 'needs_info' ? IconHelp :
     IconDot;
   return (
     <span className={`${styles.badge} ${styles[size]} ${action ? styles[action] : styles.unknown} ${className}`}>

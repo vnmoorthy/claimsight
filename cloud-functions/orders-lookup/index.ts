@@ -14,7 +14,7 @@ import type { CloudFunctionContext } from '@edgeone/types';
 import { createLogger } from '../_logger';
 import {
   getClaimsStore, resolveEnv, getOrder, readJsonBody, jsonResponse, errorResponse,
-  getQuery, queryString, pickString,
+  getQuery, queryString, pickString, orderNotFoundMessage,
 } from '../_kv';
 
 const logger = createLogger('orders-lookup');
@@ -25,14 +25,15 @@ async function lookup(context: CloudFunctionContext, orderId: string, email: str
   try {
     const store = await getClaimsStore(env);
     const order = await getOrder(store, orderId);
-    if (!order) return errorResponse(404, 'order_not_found', `Order ${orderId} not found`, { order_id: orderId });
+    // 404 shape is the same one the agent speaks: { error, message (customer-facing), order_id, found:false }.
+    if (!order) return errorResponse(404, 'order_not_found', orderNotFoundMessage(orderId), { order_id: orderId, found: false });
     if (email && email.toLowerCase() !== (order.email ?? '').toLowerCase()) {
       logger.log(`[orders-lookup] email mismatch for ${orderId}`);
-      return errorResponse(404, 'order_not_found', `Order ${orderId} not found for that email`, { order_id: orderId, reason: 'email_mismatch' });
+      return errorResponse(404, 'order_not_found', orderNotFoundMessage(orderId), { order_id: orderId, found: false, reason: 'email_mismatch' });
     }
     const deliveredMs = Date.parse(order.delivered_at);
     const days = Number.isFinite(deliveredMs) ? Math.floor((Date.now() - deliveredMs) / 86_400_000) : null;
-    return jsonResponse({ ...order, days_since_delivery: days });
+    return jsonResponse({ found: true, ...order, days_since_delivery: days });
   } catch (e) {
     logger.error('[orders-lookup] failed:', e);
     return errorResponse(500, 'lookup_failed', e instanceof Error ? e.message : String(e));

@@ -43,6 +43,8 @@ export interface OrderItem {
 export interface OrderRecord {
   order_id: string;
   customer_id: string;
+  /** Display name for the desk / Slack (e.g. "Mallory Quinn"); customer_id stays the key. */
+  customer_name?: string;
   email: string;
   placed_at: string;
   status: string;
@@ -69,13 +71,20 @@ export interface Policy {
 export interface FraudMatch {
   video_id: string;
   claim_id: string;
+  /** Friendly id of the matched claim (C-<order>-<hex>), for the desk / Slack. */
+  display_id?: string;
   score: number;
   customer_id: string;
+  customer_name?: string;
   order_id?: string;
 }
 
-export type ClaimAction = 'refund' | 'replacement' | 'escalated' | 'denied';
-export type ClaimStatus = 'auto_approved' | 'pending_review' | 'approved' | 'denied' | 'replacement';
+/** `needs_info` is never chosen by the agent's record_decision: the wrapper records it when the
+ *  claim cannot proceed (unknown order, no evidence) so the desk still sees the conversation. */
+export type ClaimAction = 'refund' | 'replacement' | 'escalated' | 'denied' | 'needs_info';
+export type ClaimStatus = 'auto_approved' | 'pending_review' | 'approved' | 'denied' | 'replacement' | 'needs_info';
+
+export type AgentMode = 'deterministic' | 'llm';
 
 export interface ClaimDecision {
   action: ClaimAction;
@@ -100,11 +109,16 @@ export interface ToolCallTrace {
 
 export interface ClaimRecord {
   claim_id: string;
+  /** Friendly id shown to customers and reviewers: C-<order_id>-<4 hex from the claim_id tail>. */
+  display_id: string;
   order_id: string;
   customer_id: string;
+  customer_name?: string;
   sku: string;
   video_id: string;
   evidence_summary: string;
+  /** Same-origin poster frame of the evidence clip (t=3 when available). */
+  evidence_frame_url?: string | null;
   damage_assessment: string;
   fraud: { checked: boolean; suspicious?: boolean; matches: FraudMatch[]; note?: string };
   decision: ClaimDecision;
@@ -116,6 +130,10 @@ export interface ClaimRecord {
   tool_calls?: ToolCallTrace[];
   trace?: { trace_id: string; emitted: boolean; exported_at?: string; endpoint?: string; reason?: string };
   model?: string;
+  /** Which engine decided: 'deterministic' (policy engine) or 'llm'. */
+  mode?: AgentMode;
+  /** Human label for `mode`: "Policy engine" or "AI model · <model id>". */
+  mode_label?: string;
   updated_at?: string;
 }
 
@@ -140,6 +158,8 @@ export interface Counters {
   refunded_total: number;
   fraud_flags: number;
   replacements: number;
+  /** Conversations parked for more input (unknown order, no evidence); not counted in `claims`. */
+  needs_info: number;
   updated_at: string;
 }
 
@@ -339,6 +359,7 @@ export interface SeedResult {
 interface SeedOrder {
   order_id: string;
   customer_id: string;
+  customer_name?: string;
   email: string;
   status: string;
   placed_days_ago: number;
@@ -357,7 +378,7 @@ function daysAgoIso(now: number, days: number): string {
 export function zeroCounters(): Counters {
   return {
     claims: 0, auto_approved: 0, escalated: 0, denied: 0,
-    refunded_total: 0, fraud_flags: 0, replacements: 0, updated_at: nowIso(),
+    refunded_total: 0, fraud_flags: 0, replacements: 0, needs_info: 0, updated_at: nowIso(),
   };
 }
 
@@ -367,11 +388,13 @@ export async function seedStore(store: ClaimsStore, env: Env, opts: { reset: boo
   const policy = policySeed as Policy;
   await store.set('policy', policy);
 
-  const orders = (ordersSeed as { orders: SeedOrder[] }).orders;
+  const seed = ordersSeed as { orders: SeedOrder[]; customers?: Record<string, { name?: string }> };
+  const orders = seed.orders;
   for (const o of orders) {
     const record: OrderRecord = {
       order_id: o.order_id,
       customer_id: o.customer_id,
+      customer_name: o.customer_name ?? seed.customers?.[o.customer_id]?.name,
       email: o.email,
       placed_at: daysAgoIso(now, o.placed_days_ago),
       status: o.status,
@@ -450,12 +473,12 @@ export interface ListClaimsFilter {
   limit?: number;
 }
 
-/** Newest first. */
+/** Newest first. Every item carries the display fields (backfilled for older records). */
 export async function listClaims(store: ClaimsStore, filter: ListClaimsFilter = {}): Promise<ClaimRecord[]> {
   const keys = await store.list('claims:');
-  const claims = (await Promise.all(keys.map(k => store.get<ClaimRecord>(k)))).filter(
-    (c): c is ClaimRecord => !!c && typeof c === 'object' && typeof (c as ClaimRecord).claim_id === 'string',
-  );
+  const claims = (await Promise.all(keys.map(k => store.get<ClaimRecord>(k))))
+    .filter((c): c is ClaimRecord => !!c && typeof c === 'object' && typeof (c as ClaimRecord).claim_id === 'string')
+    .map(withDisplayFields);
   const out = claims.filter(c =>
     (!filter.status || c.status === filter.status) &&
     (!filter.video_id || c.video_id === filter.video_id) &&
@@ -473,23 +496,82 @@ export function isFraudFlagged(claim: ClaimRecord): boolean {
 /** Write claims:<id> (+ video_index) and bump counters on first insert. */
 export async function upsertClaim(store: ClaimsStore, claim: ClaimRecord): Promise<{ claim: ClaimRecord; created: boolean }> {
   const existing = await getClaim(store, claim.claim_id);
-  const merged: ClaimRecord = { ...(existing ?? {}), ...claim, updated_at: nowIso() } as ClaimRecord;
+  const merged: ClaimRecord = withDisplayFields({ ...(existing ?? {}), ...claim, updated_at: nowIso() } as ClaimRecord);
   await store.set(`claims:${merged.claim_id}`, merged);
-  if (merged.video_id) {
+  // needs_info records never touch the video index: nothing was inspected, so nothing can be matched.
+  if (merged.video_id && merged.status !== 'needs_info') {
     await store.set(`video_index:${merged.video_id}`, {
       claim_id: merged.claim_id, order_id: merged.order_id, customer_id: merged.customer_id,
     } satisfies VideoIndexEntry);
   }
   if (!existing) {
-    const patch: Partial<Record<Exclude<keyof Counters, 'updated_at'>, number>> = { claims: 1 };
-    // `replacements` and `refunded_total` are owned by the ledger (_ledger.ts); only tally decisions here.
-    if (merged.status === 'auto_approved' || merged.status === 'replacement') patch.auto_approved = 1;
-    if (merged.status === 'pending_review') patch.escalated = 1;
-    if (merged.status === 'denied') patch.denied = 1;
-    if (isFraudFlagged(merged)) patch.fraud_flags = 1;
+    const patch: Partial<Record<Exclude<keyof Counters, 'updated_at'>, number>> = {};
+    if (merged.status === 'needs_info') {
+      patch.needs_info = 1; // parked, not decided — keeps the auto-approval denominator honest
+    } else {
+      patch.claims = 1;
+      // `replacements` and `refunded_total` are owned by the ledger (_ledger.ts); only tally decisions here.
+      if (merged.status === 'auto_approved' || merged.status === 'replacement') patch.auto_approved = 1;
+      if (merged.status === 'pending_review') patch.escalated = 1;
+      if (merged.status === 'denied') patch.denied = 1;
+      if (isFraudFlagged(merged)) patch.fraud_flags = 1;
+    }
     await bumpCounters(store, patch);
   }
   return { claim: merged, created: !existing };
+}
+
+// ─── Display helpers (product voice) ───────────────────────────────────────
+
+/**
+ * Friendly claim id: `C-<order_id>-<4 uppercase hex>` (e.g. C-A1043-F809), derived from the tail of
+ * the claim_id so it is stable without extra storage. Non-hex tails (seeded ids such as
+ * clm_seed_alice_mug) fall back to a 16-bit FNV-1a hash of the claim_id.
+ */
+export function displayIdFor(claimId: string, orderId: string): string {
+  const id = String(claimId ?? '');
+  let hex = id.slice(-4);
+  if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < id.length; i++) {
+      h ^= id.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    hex = (h & 0xffff).toString(16).padStart(4, '0');
+  }
+  const order = String(orderId ?? '').trim().toUpperCase() || 'UNKNOWN';
+  return `C-${order}-${hex.toUpperCase()}`;
+}
+
+/** "Policy engine" for the deterministic engine, "AI model · <model id>" for the LLM. */
+export function modeLabelFor(mode: AgentMode | string | undefined, model?: string): string {
+  if (mode === 'llm') return `AI model · ${model?.trim() || 'unknown model'}`;
+  return 'Policy engine';
+}
+
+/** "Demo data" when storage is the in-memory Map or Memories.ai is stubbed, otherwise "Live". */
+export function backendLabelFor(backend: StorageBackend, env: Env): 'Demo data' | 'Live' {
+  return backend === 'memory' || isMemoriesStubbed(env) ? 'Demo data' : 'Live';
+}
+
+/** The one customer-facing sentence for an unknown order (agent reply, /orders-lookup 404). */
+export function orderNotFoundMessage(orderId: string): string {
+  return `I couldn't find order ${orderId} — check the number on your confirmation email.`;
+}
+
+/** Backfill display_id / mode_label on records written before these fields existed. */
+export function withDisplayFields(claim: ClaimRecord): ClaimRecord {
+  const out = claim;
+  if (!out.display_id) out.display_id = displayIdFor(out.claim_id, out.order_id);
+  if (!out.mode) out.mode = out.model && out.model !== 'deterministic' ? 'llm' : 'deterministic';
+  if (!out.mode_label) out.mode_label = modeLabelFor(out.mode, out.model);
+  if (out.evidence_frame_url === undefined) out.evidence_frame_url = null;
+  if (Array.isArray(out.fraud?.matches)) {
+    for (const m of out.fraud.matches) {
+      if (m && !m.display_id && m.claim_id) m.display_id = displayIdFor(m.claim_id, m.order_id ?? '');
+    }
+  }
+  return out;
 }
 
 // ─── Request / response helpers ────────────────────────────────────────────

@@ -4,21 +4,28 @@ import type { ClaimRecord, ClaimStatus, FraudMatch, StatsSnapshot } from '../typ
 import { fetchClaims, fetchStats, submitClaimDecision } from '../api';
 import { useT, type MessageKeys } from '../i18n';
 import { canonicalAction } from '../lib/decision';
-import { fmtClock, fmtLatency, fmtMoney, fmtPercent, fmtRelative, median, shortId, toMillis } from '../lib/format';
+import { demoClipLabel } from '../demoEvidence';
+import { fmtClock, fmtLatency, fmtMoney, fmtPercent, fmtRelative, median, toMillis } from '../lib/format';
+import { customerNameOf, displayIdOf, evidenceFrameUrlOf, hasCustomerName, modeLabelOf } from '../lib/labels';
+import type { DeskFocus } from '../lib/nav';
 import { clauseText } from '../lib/policyClauses';
+import { useToast } from '../lib/toast';
 import { stepsFromToolCalls, stepElapsedMs } from '../lib/trace';
 import ActionBadge from './ActionBadge';
+import { MatchLine } from './DecisionCard';
 import Drawer from './Drawer';
-import { IconAlert, IconArrowRight, IconBolt, IconCheck, IconClock, IconInbox, IconMinus, IconRefresh, IconSwap, IconX } from './icons';
+import EvidenceFrame from './EvidenceFrame';
+import { IconAlert, IconArrowRight, IconBolt, IconCheck, IconClock, IconHelp, IconInbox, IconMinus, IconRefresh, IconSwap, IconX } from './icons';
 import styles from './RefundDesk.module.css';
 
 const REFRESH_MS = 5000;
+const SKELETON_ROWS = 6;
 
-type Filter = 'all' | 'pending_review' | 'auto_approved' | 'approved' | 'replacement' | 'denied';
-const FILTERS: Filter[] = ['all', 'pending_review', 'auto_approved', 'approved', 'replacement', 'denied'];
-const KNOWN_STATUSES: readonly ClaimStatus[] = ['auto_approved', 'pending_review', 'approved', 'denied', 'replacement'];
+type Filter = 'all' | 'pending_review' | 'needs_info' | 'auto_approved' | 'approved' | 'replacement' | 'denied';
+const FILTERS: Filter[] = ['all', 'pending_review', 'needs_info', 'auto_approved', 'approved', 'replacement', 'denied'];
+const KNOWN_STATUSES: readonly ClaimStatus[] = ['auto_approved', 'pending_review', 'approved', 'denied', 'replacement', 'needs_info'];
 
-/** Collapse whatever spelling the backend used onto the SPEC's five statuses. */
+/** Collapse whatever spelling the backend used onto the SPEC's statuses. */
 export function normalizeStatus(status: string | undefined | null): ClaimStatus | 'unknown' {
   const s = (status ?? '').toLowerCase().trim().replace(/[\s-]+/g, '_');
   if ((KNOWN_STATUSES as readonly string[]).includes(s)) return s as ClaimStatus;
@@ -26,6 +33,7 @@ export function normalizeStatus(status: string | undefined | null): ClaimStatus 
   if (s === 'rejected' || s === 'deny' || s === 'declined') return 'denied';
   if (s === 'refunded' || s === 'auto_refund' || s === 'auto_refunded') return 'auto_approved';
   if (s === 'replaced') return 'replacement';
+  if (s === 'need_info' || s === 'needs_information' || s === 'needs_more_info' || s === 'more_info' || s === 'info_needed' || s === 'info_requested' || s === 'unknown_order' || s === 'order_not_found') return 'needs_info';
   return 'unknown';
 }
 
@@ -34,6 +42,12 @@ interface Props {
   active: boolean;
   onPendingCount?: (count: number) => void;
   onGoToChat: () => void;
+  /** `#desk?claim=<id>` — open this claim's drawer (nonce changes re-open it). */
+  focus?: DeskFocus | null;
+  /** The drawer for the focused claim was closed — the caller drops the claim from the hash. */
+  onFocusDone?: () => void;
+  /** Mode label from GET /stats, used when a record carries none. */
+  modeLabel?: string;
 }
 
 function fraudMatches(c: ClaimRecord): FraudMatch[] {
@@ -46,8 +60,9 @@ function isNumber(n: unknown): n is number {
   return typeof n === 'number' && Number.isFinite(n);
 }
 
-export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props) {
+export default function RefundDesk({ active, onPendingCount, onGoToChat, focus, onFocusDone, modeLabel }: Props) {
   const { t } = useT();
+  const toast = useToast();
   const [claims, setClaims] = useState<ClaimRecord[] | null>(null);
   const [stats, setStats] = useState<StatsSnapshot | null>(null);
   const [offline, setOffline] = useState(false);
@@ -128,18 +143,32 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
   const medianLatency = stats?.medianLatencyMs ?? median(all.map(c => c.latency_ms).filter(isNumber));
   const autoRate = total > 0 ? autoApproved / total : undefined;
 
-  const openClaim = (id: string) => {
+  const openClaim = useCallback((id: string) => {
     setSelectedId(id);
     setNote('');
     setSubmitError(null);
     setJustDecided(null);
-  };
-  const closeClaim = () => setSelectedId(null);
+  }, []);
+
+  const closeClaim = useCallback(() => {
+    setSelectedId(null);
+    if (focus) onFocusDone?.();
+  }, [focus, onFocusDone]);
+
+  // Deep link: open the focused claim's drawer (the record may still be loading — the
+  // drawer appears as soon as the list contains it).
+  const focusNonce = focus?.nonce;
+  useEffect(() => {
+    if (!focus) return;
+    openClaim(focus.claimId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce]);
 
   const decide = async (decision: 'approve' | 'deny') => {
     if (!selected || submitting) return;
     setSubmitting(decision);
     setSubmitError(null);
+    const label = displayIdOf(selected) ?? selected.claim_id;
     try {
       await submitClaimDecision(selected.claim_id, decision, note.trim());
       const wantsReplacement = (selected.decision?.recommended_action ?? selected.decision?.action) === 'replacement';
@@ -161,17 +190,38 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
       )));
       setJustDecided(selected.claim_id);
       setNote('');
+      toast.push({
+        tone: 'good',
+        text: t(decision === 'deny' ? 'desk.toast.denied' : wantsReplacement ? 'desk.toast.replacement' : 'desk.toast.approved').replace('{0}', label),
+      });
       void refresh();
     } catch (e) {
-      setSubmitError((e as Error).message || t('desk.submitError'));
+      const message = (e as Error).message || t('desk.submitError');
+      setSubmitError(message);
+      toast.push({ tone: 'crit', text: t('desk.toast.failed').replace('{0}', message), ttl: 8000 });
     } finally {
       setSubmitting(null);
     }
   };
 
+  const handleReset = async () => {
+    if (!window.confirm(t('desk.resetConfirm'))) return;
+    try {
+      await resetDemo();
+      toast.push({ tone: 'info', text: t('desk.toast.resetDone') });
+    } catch (e) {
+      console.error('[desk] reset failed', e);
+      toast.push({ tone: 'crit', text: t('desk.toast.resetFailed').replace('{0}', (e as Error).message || ''), ttl: 8000 });
+    }
+    void refresh();
+  };
+
   const handleNoteKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') closeClaim();
   };
+
+  const selectedStatus = selected ? normalizeStatus(selected.status) : 'unknown';
+  const selectedDisplayId = selected ? displayIdOf(selected) : undefined;
 
   return (
     <section className={styles.desk} aria-label={t('desk.title')}>
@@ -193,13 +243,10 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
           <button
             type="button"
             className="btn btn-sm"
-            onClick={async () => {
-              if (!window.confirm(t('desk.resetConfirm'))) return;
-              try { await resetDemo(); } catch (e) { console.error('[desk] reset failed', e); }
-              void refresh();
-            }}
+            onClick={() => void handleReset()}
             disabled={refreshing}
             title={t('desk.resetConfirm')}
+            data-testid="desk-reset"
           >
             <IconX size={13} />
             {t('desk.reset')}
@@ -224,6 +271,7 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
               aria-selected={filter === f}
               className={`${styles.chip} ${filter === f ? styles.chipActive : ''} ${f === 'pending_review' && (counts[f] ?? 0) > 0 ? styles.chipPending : ''}`}
               onClick={() => setFilter(f)}
+              data-testid={`filter-${f}`}
             >
               {t(`desk.filter.${f}` as MessageKeys)}
               <span className={`${styles.chipCount} mono`}>{counts[f] ?? 0}</span>
@@ -232,11 +280,15 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
         </div>
       </div>
 
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap} data-testid="desk-table-wrap">
         {claims === null ? (
-          <div className={styles.empty}>
-            <span className={styles.emptyText}>{offline ? t('banner.offline') : t('desk.loading')}</span>
-          </div>
+          offline ? (
+            <div className={styles.empty}>
+              <span className={styles.emptyText}>{t('banner.offline')}</span>
+            </div>
+          ) : (
+            <SkeletonTable />
+          )
         ) : all.length === 0 ? (
           <div className={styles.empty}>
             <span className={styles.emptyIcon}><IconInbox size={26} /></span>
@@ -250,7 +302,7 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
         ) : visible.length === 0 ? (
           <div className={styles.empty}><span className={styles.emptyText}>{t('desk.emptyFiltered')}</span></div>
         ) : (
-          <table className={styles.table}>
+          <table className={styles.table} data-testid="desk-table">
             <thead>
               <tr>
                 <th>{t('desk.col.claim')}</th>
@@ -266,7 +318,7 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
             </thead>
             <tbody>
               {visible.map(c => (
-                <ClaimRow key={c.claim_id} claim={c} selected={selectedId === c.claim_id} onOpen={() => openClaim(c.claim_id)} />
+                <ClaimRow key={c.claim_id} claim={c} selected={selectedId === c.claim_id} onOpen={() => openClaim(c.claim_id)} modeLabel={modeLabel} />
               ))}
             </tbody>
           </table>
@@ -283,11 +335,11 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
         title={selected ? (
           <span className={styles.drawerTitle}>
             <span className="kicker">{t('desk.detail.title')}</span>
-            <span className="mono">{selected.claim_id}</span>
+            <span className="mono" title={selected.claim_id} data-testid="drawer-display-id">{selectedDisplayId}</span>
           </span>
         ) : null}
-        headerExtra={selected ? <StatusPill status={normalizeStatus(selected.status)} /> : null}
-        footer={selected && normalizeStatus(selected.status) === 'pending_review' ? (
+        headerExtra={selected ? <StatusPill status={selectedStatus} /> : null}
+        footer={selected && selectedStatus === 'pending_review' ? (
           <div className={styles.decide}>
             <input
               className={styles.noteInput}
@@ -297,13 +349,14 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
               placeholder={t('desk.notePlaceholder')}
               maxLength={280}
               disabled={submitting !== null}
+              data-testid="decision-note"
             />
             <div className={styles.decideBtns}>
-              <button type="button" className="btn btn-good" onClick={() => void decide('approve')} disabled={submitting !== null}>
+              <button type="button" className="btn btn-good" onClick={() => void decide('approve')} disabled={submitting !== null} data-testid="approve-btn">
                 {(selected.decision?.recommended_action ?? '') === 'replacement' ? <IconSwap size={14} /> : <IconCheck size={14} strokeWidth={2.6} />}
                 {submitting === 'approve' ? t('desk.submitting') : (selected.decision?.recommended_action ?? '') === 'replacement' ? t('desk.approveReplacement') : t('desk.approve')}
               </button>
-              <button type="button" className="btn btn-crit" onClick={() => void decide('deny')} disabled={submitting !== null}>
+              <button type="button" className="btn btn-crit" onClick={() => void decide('deny')} disabled={submitting !== null} data-testid="deny-btn">
                 <IconX size={14} strokeWidth={2.6} />
                 {submitting === 'deny' ? t('desk.submitting') : t('desk.deny')}
               </button>
@@ -312,7 +365,7 @@ export default function RefundDesk({ active, onPendingCount, onGoToChat }: Props
           </div>
         ) : null}
       >
-        {selected && <ClaimDetail claim={selected} justDecided={justDecided === selected.claim_id} />}
+        {selected && <ClaimDetail claim={selected} justDecided={justDecided === selected.claim_id} modeLabel={modeLabel} />}
       </Drawer>
     </section>
   );
@@ -330,6 +383,40 @@ function StatTile({ label, value, sub, tone, accent }: { label: string; value: s
   );
 }
 
+function SkeletonTable() {
+  const { t } = useT();
+  const widths = [72, 56, 64, 40, 70, 52, 68, 48, 44];
+  return (
+    <table className={`${styles.table} ${styles.skeleton}`} aria-busy="true" aria-label={t('desk.loading')} data-testid="desk-skeleton">
+      <thead>
+        <tr>
+          <th>{t('desk.col.claim')}</th>
+          <th>{t('desk.col.order')}</th>
+          <th>{t('desk.col.customer')}</th>
+          <th className={styles.numCol}>{t('desk.col.amount')}</th>
+          <th>{t('desk.col.action')}</th>
+          <th>{t('desk.col.fraud')}</th>
+          <th>{t('desk.col.status')}</th>
+          <th>{t('desk.col.decidedBy')}</th>
+          <th className={styles.numCol}>{t('desk.col.time')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: SKELETON_ROWS }, (_, r) => (
+          <tr key={r} aria-hidden="true">
+            {widths.map((w, i) => (
+              <td key={i} className={i === 3 || i === 8 ? styles.numCol : undefined}>
+                <span className={styles.bone} style={{ width: `${w}%`, animationDelay: `${(r * 90) + (i * 30)}ms` }} />
+                {(i === 0 || i === 2) && <span className={`${styles.bone} ${styles.boneSub}`} style={{ width: `${Math.round(w * 0.6)}%` }} />}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function StatusPill({ status }: { status: ClaimStatus | 'unknown' }) {
   const { t } = useT();
   const label = status === 'unknown' ? '—' : t(`desk.status.${status}` as MessageKeys);
@@ -339,16 +426,17 @@ function StatusPill({ status }: { status: ClaimStatus | 'unknown' }) {
     status === 'approved' ? IconCheck :
     status === 'denied' ? IconX :
     status === 'replacement' ? IconSwap :
+    status === 'needs_info' ? IconHelp :
     IconMinus;
   return (
-    <span className={`${styles.statusPill} ${styles[`st_${status}`] ?? styles.st_unknown}`}>
+    <span className={`${styles.statusPill} ${styles[`st_${status}`] ?? styles.st_unknown}`} data-testid="status-pill-claim" data-status={status}>
       <Icon size={12} strokeWidth={2.5} />
       {label}
     </span>
   );
 }
 
-function ClaimRow({ claim: c, selected, onOpen }: { claim: ClaimRecord; selected: boolean; onOpen: () => void }) {
+function ClaimRow({ claim: c, selected, onOpen, modeLabel }: { claim: ClaimRecord; selected: boolean; onOpen: () => void; modeLabel?: string }) {
   const { t } = useT();
   const status = normalizeStatus(c.status);
   const matches = fraudMatches(c);
@@ -357,6 +445,12 @@ function ClaimRow({ claim: c, selected, onOpen }: { claim: ClaimRecord; selected
   const action = canonicalAction(c.decision?.action);
   const isPending = status === 'pending_review';
   const decidedMs = toMillis(c.decided_at);
+  const displayId = displayIdOf(c) ?? c.claim_id;
+  const name = customerNameOf(c);
+  const named = hasCustomerName(c);
+  const frame = evidenceFrameUrlOf(c);
+  const mode = modeLabelOf(t, c.mode_label ?? modeLabel, c.model);
+  const statusLabel = status === 'unknown' ? '' : t(`desk.status.${status}` as MessageKeys);
 
   return (
     <tr
@@ -364,19 +458,34 @@ function ClaimRow({ claim: c, selected, onOpen }: { claim: ClaimRecord; selected
       onClick={onOpen}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
       tabIndex={0}
-      aria-selected={selected}
+      role="button"
+      aria-pressed={selected}
+      aria-label={[t('desk.openRow').replace('{0}', displayId), name, statusLabel].filter(Boolean).join(' · ')}
+      data-testid="claim-row"
+      data-claim-id={c.claim_id}
+      data-status={status}
     >
       <td>
-        <span className={`${styles.primary} mono`} title={c.claim_id}>{shortId(c.claim_id, 12, 4)}</span>
-        <span className={styles.sub}>{fmtRelative(c.created_at)}</span>
+        <span className={styles.claimCell}>
+          {frame && <EvidenceFrame src={frame} variant="thumb" />}
+          <span className={styles.claimText}>
+            <span className={`${styles.primary} mono`} title={c.claim_id !== displayId ? c.claim_id : undefined}>{displayId}</span>
+            <span className={styles.sub}>{fmtRelative(c.created_at)}</span>
+          </span>
+        </span>
       </td>
-      <td>
+      <td className={styles.orderCell}>
         <span className={`${styles.primary} mono`}>{c.order_id ?? '—'}</span>
         <span className={styles.sub}>{c.sku ?? '—'}</span>
       </td>
-      <td><span className="mono">{c.customer_id ?? '—'}</span></td>
+      <td className={styles.nameCell}>
+        <span className={named ? styles.primary : `${styles.primary} mono`}>{name ?? '—'}</span>
+        {named && c.customer_id && <span className={`${styles.sub} mono`}>{c.customer_id}</span>}
+      </td>
       <td className={`${styles.numCol} mono`}>
-        {isNumber(c.decision?.amount) ? <span className={styles.primary}>{fmtMoney(c.decision.amount, c.decision.currency ?? 'USD')}</span> : '—'}
+        {isNumber(c.decision?.amount) && c.decision.amount > 0 && status !== 'needs_info'
+          ? <span className={styles.primary}>{fmtMoney(c.decision.amount, c.decision.currency ?? 'USD')}</span>
+          : <span className={styles.muted}>—</span>}
       </td>
       <td><ActionBadge action={action} label={action ? undefined : (c.decision?.action ?? '—')} size="sm" /></td>
       <td>
@@ -395,7 +504,7 @@ function ClaimRow({ claim: c, selected, onOpen }: { claim: ClaimRecord; selected
       <td><StatusPill status={status} /></td>
       <td>
         <span className={styles.by}>{c.decision?.by === 'human' ? t('desk.byHuman') : t('desk.byAgent')}</span>
-        {c.model && <span className={`${styles.sub} mono`}>{c.model}</span>}
+        {mode && <span className={styles.sub}>{mode}</span>}
       </td>
       <td className={`${styles.numCol} mono`}>
         <span>{fmtClock(c.created_at)}</span>
@@ -405,16 +514,16 @@ function ClaimRow({ claim: c, selected, onOpen }: { claim: ClaimRecord; selected
   );
 }
 
-function Field({ label, value, mono }: { label: string; value: ReactNode; mono?: boolean }) {
+function Field({ label, value, mono, title }: { label: string; value: ReactNode; mono?: boolean; title?: string }) {
   return (
     <div className={styles.field}>
       <span className={styles.fieldLabel}>{label}</span>
-      <span className={`${styles.fieldValue} ${mono ? 'mono' : ''}`}>{value}</span>
+      <span className={`${styles.fieldValue} ${mono ? 'mono' : ''}`} title={title}>{value}</span>
     </div>
   );
 }
 
-function ClaimDetail({ claim: c, justDecided }: { claim: ClaimRecord; justDecided: boolean }) {
+function ClaimDetail({ claim: c, justDecided, modeLabel }: { claim: ClaimRecord; justDecided: boolean; modeLabel?: string }) {
   const { t } = useT();
   const status = normalizeStatus(c.status);
   const matches = fraudMatches(c);
@@ -424,18 +533,32 @@ function ClaimDetail({ claim: c, justDecided }: { claim: ClaimRecord; justDecide
   const steps = stepsFromToolCalls(c.tool_calls);
   const decidedMs = toMillis(c.decided_at);
   const isPending = status === 'pending_review';
+  const needsInfo = status === 'needs_info' || action === 'needs_info';
+  const displayId = displayIdOf(c) ?? c.claim_id;
+  const name = customerNameOf(c);
+  const named = hasCustomerName(c);
+  const frame = evidenceFrameUrlOf(c);
+  const clipLabel = demoClipLabel(c.video_id, c.order_id);
+  const mode = modeLabelOf(t, c.mode_label ?? modeLabel, c.model);
+  const showAmount = isNumber(c.decision?.amount) && c.decision.amount > 0 && !needsInfo;
 
   return (
-    <div className={styles.detail}>
+    <div className={styles.detail} data-testid="claim-detail">
       <div className={styles.detailHero}>
         <ActionBadge action={action} label={action ? undefined : (c.decision?.action ?? '—')} size="lg" />
-        {isNumber(c.decision?.amount) && c.decision.amount > 0 && (
-          <span className={`${styles.detailAmount} tabular`}>{fmtMoney(c.decision.amount, c.decision.currency ?? 'USD')}</span>
+        {showAmount && (
+          <span className={`${styles.detailAmount} tabular`}>{fmtMoney(c.decision!.amount, c.decision!.currency ?? 'USD')}</span>
         )}
       </div>
-      <p className={`${styles.detailLine} mono`}>
-        {[c.order_id, c.sku, c.customer_id].filter(Boolean).join(' · ')}
+      <p className={styles.detailLine}>
+        {name && <span className={named ? styles.detailName : `${styles.detailName} mono`}>{name}</span>}
+        <span className="mono">{[c.order_id, c.sku].filter(Boolean).join(' · ')}</span>
       </p>
+      {c.claim_id !== displayId && (
+        <p className={`${styles.detailRawId} mono`}>
+          <span>{t('desk.detail.claimId')}</span> {c.claim_id}
+        </p>
+      )}
 
       {justDecided && (
         <div className={styles.noticeGood}><IconCheck size={14} strokeWidth={2.6} />{t('desk.decided')}</div>
@@ -444,17 +567,33 @@ function ClaimDetail({ claim: c, justDecided }: { claim: ClaimRecord; justDecide
         <div className={styles.noticeWarn}>
           <IconClock size={14} />
           <span>
-            {t('desk.detail.pendingHint')}
+            {named && name ? t('desk.detail.pendingHintNamed').replace('{0}', name) : t('desk.detail.pendingHint')}
             {c.decision?.recommended_action && <> <b>{t('desk.detail.recommended')}: {c.decision.recommended_action}</b></>}
           </span>
+        </div>
+      )}
+      {needsInfo && !isPending && (
+        <div className={styles.noticeInfo}>
+          <IconHelp size={14} />
+          <span>{t('desk.detail.needsInfoHint')}</span>
         </div>
       )}
 
       <section className={styles.detailSection}>
         <h4 className="kicker">{t('desk.detail.evidence')}</h4>
+        {frame && <EvidenceFrame src={frame} className={styles.detailFrame} />}
         <p className={styles.detailText}>{c.evidence_summary || '—'}</p>
         {c.damage_assessment && <p className={styles.detailMuted}>{c.damage_assessment}</p>}
-        {c.video_id && <p className={`${styles.detailMuted} mono`}>{t('desk.detail.video')} · {c.video_id}</p>}
+        {c.video_id && (
+          <p className={styles.detailClip}>
+            <span className={styles.detailClipLabel}>
+              <span className={styles.detailKicker}>{t('trace.clip')}</span>
+              {clipLabel ?? c.video_id}
+              {clipLabel && <i className={styles.demoTag}>{t('evidence.demoBadge')}</i>}
+            </span>
+            {clipLabel && <span className={`${styles.detailMuted} mono`}>{c.video_id}</span>}
+          </p>
+        )}
       </section>
 
       <section className={styles.detailSection}>
@@ -468,16 +607,9 @@ function ClaimDetail({ claim: c, justDecided }: { claim: ClaimRecord; justDecide
             <div className={styles.matchTitle}><IconAlert size={14} />{t('decision.fraudTitle')}</div>
             <ul className={styles.matchList}>
               {matches.map((m, i) => (
-                <li key={`${m.video_id ?? ''}-${i}`} className="mono">
-                  {isNumber(m.score) && <span><em>{t('decision.similarity')}</em><b className={styles.fraudBad}>{m.score.toFixed(2)}</b></span>}
-                  {m.video_id && <span title={m.video_id}><em>{t('desk.detail.video').toLowerCase()}</em>{shortId(m.video_id, 14, 4)}</span>}
-                  {m.claim_id && <span title={m.claim_id}><em>{t('decision.matchedClaim')}</em>{shortId(m.claim_id, 12, 4)}</span>}
-                  {m.customer_id && <span><em>{t('decision.matchedAccount')}</em>{m.customer_id}</span>}
-                  {m.order_id && <span><em>{t('decision.matchedOrder')}</em>{m.order_id}</span>}
-                </li>
+                <li key={`${m.video_id ?? ''}-${i}`} data-testid="drawer-fraud-match"><MatchLine match={m} /></li>
               ))}
             </ul>
-            {c.fraud?.note && <p className={styles.detailMuted}>{c.fraud.note}</p>}
           </div>
         )}
       </section>
@@ -520,12 +652,20 @@ function ClaimDetail({ claim: c, justDecided }: { claim: ClaimRecord; justDecide
       )}
 
       <section className={`${styles.detailSection} ${styles.fields}`}>
-        <Field label={t('desk.detail.customer')} value={c.customer_id ?? '—'} mono />
-        <Field label={t('desk.detail.txn')} value={c.decision?.txn_id ? <span className={styles.txn}>{c.decision.txn_id}</span> : '—'} mono />
+        <Field
+          label={t('desk.detail.customer')}
+          value={name ? (
+            <>
+              <span className={named ? undefined : 'mono'}>{name}</span>
+              {named && c.customer_id && <span className={`${styles.fieldSub} mono`}>{c.customer_id}</span>}
+            </>
+          ) : '—'}
+        />
+        <Field label={t('desk.detail.txn')} value={c.decision?.txn_id ? <span className={styles.txn}>{c.decision.txn_id}</span> : '—'} mono title={c.decision?.txn_id} />
         <Field label={t('decision.latency')} value={fmtLatency(c.latency_ms)} mono />
-        <Field label={t('desk.detail.mode')} value={c.model ?? '—'} mono />
+        <Field label={t('desk.detail.mode')} value={mode ?? '—'} />
         <Field label={t('desk.detail.decidedAt')} value={decidedMs !== undefined ? `${new Date(decidedMs).toLocaleString()} · ${c.decision?.by === 'human' ? t('desk.byHuman') : t('desk.byAgent')}` : '—'} />
-        <Field label={t('desk.detail.conversation')} value={shortId(c.conversation_id, 12, 6)} mono />
+        <Field label={t('desk.detail.conversation')} value={c.conversation_id ?? '—'} mono title={c.conversation_id} />
       </section>
     </div>
   );

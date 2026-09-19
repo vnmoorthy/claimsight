@@ -32,16 +32,16 @@ env:
 
 # Capabilities the skill needs from WorkBuddy.
 tools:
-  - http          # GET /claims, POST /claims/decision, GET /stats
+  - http          # GET /claims, POST /claims-decision, GET /stats
   - slack         # post the summary to the connected channel
   - documents     # write the daily .docx digest
 
 endpoints:
-  list_pending: "GET {CLAIMSIGHT_URL}/claims?status=pending_review"
-  decide:       "POST {CLAIMSIGHT_URL}/claims/decision"   # {"claim_id","decision":"approve"|"deny","note"}
+  list_pending: "GET {CLAIMSIGHT_URL}/claims-list?status=pending_review"
+  decide:       "POST {CLAIMSIGHT_URL}/claims-decision"   # {"claim_id","decision":"approve"|"deny","note"}
   stats:        "GET {CLAIMSIGHT_URL}/stats"
   all_claims:   "GET {CLAIMSIGHT_URL}/claims"
-  desk_ui:      "{CLAIMSIGHT_UI_URL}/desk"
+  desk_ui:      "{CLAIMSIGHT_UI_URL}/#desk"
 
 slack:
   channel: "#refund-desk"

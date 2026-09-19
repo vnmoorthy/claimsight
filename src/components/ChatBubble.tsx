@@ -1,10 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message, ImageAttachment } from '../types';
 import { useT } from '../i18n';
 import { extractDecision } from '../lib/decision';
-import { shortId } from '../lib/format';
 import { useClaimRecord } from '../lib/useClaimRecord';
 import DecisionCard from './DecisionCard';
 import { IconAlert, IconPackage, IconVideo, LogoMark } from './icons';
@@ -89,6 +88,13 @@ export default function ChatBubble({ message }: Props) {
   const decision = extracted?.decision ?? null;
   const { record } = useClaimRecord(decision?.claim_id, !!decision);
 
+  // A Decision Card counts as "live" when this bubble was streaming at the moment
+  // the block completed (restored history never scrolls the page around).
+  const streamedRef = useRef(false);
+  if (message.streaming) streamedRef.current = true;
+  const liveRef = useRef<boolean | null>(null);
+  if (decision && liveRef.current === null) liveRef.current = streamedRef.current;
+
   if (!isUser && !message.content && images.length === 0 && !activity) return null;
 
   const time = new Date(message.timestamp).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' });
@@ -137,7 +143,6 @@ export default function ChatBubble({ message }: Props) {
               <span className={styles.metaChip} title={meta.evidenceVideoId}>
                 <IconVideo size={12} />
                 <span>{meta.evidenceLabel || t('chat.evidenceChip')}</span>
-                <b className="mono">{shortId(meta.evidenceVideoId, 14, 4)}</b>
                 {meta.evidenceSource === 'demo' && <i className={styles.metaTag}>{t('evidence.demoBadge')}</i>}
               </span>
             )}
@@ -160,7 +165,7 @@ export default function ChatBubble({ message }: Props) {
           </div>
         )}
 
-        {decision && <DecisionCard decision={decision} record={record} />}
+        {decision && <DecisionCard decision={decision} record={record} live={liveRef.current === true} />}
 
         {images.length > 0 && (
           <div className={styles.imageList}>

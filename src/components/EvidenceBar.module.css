@@ -186,7 +186,7 @@
   border-radius: 999px;
   border: 1px solid var(--line-strong);
 }
-.videoId { font-size: var(--t-11); color: var(--ink-2); }
+.videoId { font-size: var(--t-11); color: var(--ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 .removeBtn {
   margin-left: auto;

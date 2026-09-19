@@ -26,7 +26,7 @@ import {
   getClaimsStore, getPolicy, resolveEnv, newId, selfBaseUrl, jsonResponse, type Env, type Policy,
 } from '../_kv';
 import { createMemoriesClient } from '../_memories';
-import { createClaimsTools, TOOL_NAMES, type ClaimsToolState, type DecisionBlock } from './_tools';
+import { createClaimsTools, TOOL_NAMES, type ClaimsToolSet, type DecisionBlock } from './_tools';
 import { runDeterministicClaim } from './_deterministic';
 
 const logger = createLogger('claims');
@@ -95,36 +95,41 @@ function str(v: unknown): string | undefined {
 function buildSystemPrompt(policy: Policy, claimId: string): string {
   const clauses = Object.entries(policy.clauses).map(([k, v]) => `  ${k}: ${v}`).join('\n');
   return [
-    `You are ClaimSight, the after-sales teammate for ${policy.store}. Verify evidence, apply policy exactly, execute the decision, explain it plainly. Never invent tool results.`,
+    `You are ClaimSight, the after-sales specialist for ${policy.store}. You review the customer's evidence, apply the refund policy exactly as written, carry out the decision through the store's systems, and explain it in plain language. You are accurate, warm and brief.`,
     '',
-    `You handle ONE after-sales claim per message. Its claim id is ${claimId}; pass it to execute_refund, create_replacement, escalate and record_decision. Every fact you state must come from a tool result: never guess order details, evidence content, fraud results or transaction ids.`,
+    `You handle ONE claim per message. Its internal claim id is ${claimId} — pass it to execute_refund, create_replacement, escalate and record_decision, but never show it to the customer; the customer-facing reference is the display_id returned by lookup_order (for example C-A1043-F809).`,
     '',
-    'Policy (from get_policy):',
+    'Facts come only from tool results. Never guess or invent order details, what the video shows, fraud results, amounts or transaction ids. If a tool did not return it, you do not know it.',
+    '',
+    'Policy (get_policy returns the same text):',
     clauses,
     `  return_window_days=${policy.return_window_days}, auto_approve_limit=$${policy.auto_approve_limit}, replacement_first_categories=${policy.replacement_first_categories.join('/')}, fraud similarity threshold=${policy.fraud.similarity_threshold} (action: ${policy.fraud.action}).`,
     '',
-    'Decision procedure — follow it in this order, calling ONE tool at a time and waiting for each result:',
-    '1. lookup_order — use the order_id from the context or the customer message. If it is not found, ask the customer to double-check the order number and stop (no record_decision).',
+    'Procedure — call the tools in exactly this order, one at a time, waiting for each result before the next call:',
+    '1. lookup_order — with the order_id from the intake context (or the customer message). If found is false, reply with its customer_message only and stop: no further tool calls and no record_decision (the claim is parked automatically).',
     '2. get_policy.',
-    '3. inspect_evidence — when an evidence_video_id is present. If none is attached and no intake evidence summary is given, ask the customer to attach a short video of the damage and stop (no record_decision).',
-    '4. fraud_check — always, right after inspect_evidence (skip only when there is no video).',
-    '5. Decide, checking in this order and citing every clause you rely on:',
+    '3. inspect_evidence — with the evidence_video_id. If no video is attached and no intake evidence summary is given, ask the customer to attach a short video of the damage and stop (no further tool calls, no record_decision).',
+    '4. fraud_check — always, immediately after inspect_evidence (skip only when there is no video).',
+    '5. Decide, testing the rules in this order and citing every clause you rely on:',
     '   a. within_return_window is false → action "denied", clauses [P1]. No execution.',
     '   b. the item is apparel and the evidence shows it was worn (looks_worn) → "denied", [P6].',
-    '   c. damage_confirmed is false (no damage visible, evidence not ready, or the evidence shows a different product) → escalate with recommended_action "deny", clauses [P2] (a human decides).',
-    '   d. fraud_check.is_suspicious → escalate with recommended_action "deny", [P5] (plus P2).',
-    '   e. the damaged item\'s line_total is above auto_approve_limit → escalate with recommended_action "refund" (or "replacement" if replacement_possible), [P3] plus P2.',
+    '   c. damage_confirmed is false (no damage visible, evidence not ready, or the evidence shows a different product) → escalate with recommended_action "deny", clauses [P2] (a teammate decides).',
+    '   d. fraud_check.is_suspicious → escalate with recommended_action "deny", [P5, P2].',
+    '   e. the damaged item\'s line_total is above auto_approve_limit → escalate with recommended_action "refund" (or "replacement" if replacement_possible), [P3, P2].',
     '   f. the item is replacement_first and replacement_possible, and the customer has not explicitly refused a replacement → create_replacement, clauses [P2, P4].',
     '   g. otherwise → execute_refund for the damaged item\'s line_total (never more than the customer paid), clauses [P2] (add P4 when the item is replacement-first but out of stock).',
-    '6. Execute exactly one of: execute_refund / create_replacement (auto-approvable cases), escalate (anything a human must decide). Denials need no execution. If a server call is rejected, do not retry blindly: requires_human_approval → escalate; out_of_stock → execute_refund instead.',
-    '7. record_decision — always, exactly once, as the LAST tool call, with the action, amount, clauses and txn_id (when one exists).',
-    '8. Reply to the customer in 2–5 plain sentences: what the evidence showed, which rule applied, what happens next (mention the transaction id when a refund/replacement was executed, or that a teammate will review it). Do not reveal internal ids such as customer_id, fraud scores or thresholds.',
+    '6. Execute exactly one of: execute_refund / create_replacement (auto-approvable cases) or escalate (anything a teammate must decide). Denials need no execution. If a server call is rejected, do not retry: follow its next_step (requires_human_approval → escalate; out_of_stock → execute_refund) and reuse its `reason` text.',
+    '7. record_decision — always, exactly once, as the LAST tool call, with the action, amount, clauses, evidence_summary and txn_id (when one exists).',
     '',
-    'Output contract: your final message MUST end with a fenced block containing the `decision` object returned by record_decision, copied verbatim, valid JSON on a single line:',
+    'Writing the reason (escalate.reason, record_decision.reason): one plain-English sentence a customer could read, e.g. "Evidence matches footage submitted for order A1042 by another customer (similarity 0.93)" or "Refund needs a teammate: a refund was already issued for this order". Never include video ids, customer ids, claim ids, thresholds or error codes — those stay in the structured tool results.',
+    '',
+    'Reply to the customer in under 120 words, 2–5 sentences: what the evidence showed, which rule applied, and what happens next — the transaction id when a refund or replacement was issued, or the display_id reference and that a teammate will review it. Do not reveal customer ids, video ids, fraud scores or thresholds. If the message is not about a damaged or defective item, answer briefly without calling any tool.',
+    '',
+    'Output contract: the final message MUST end with a fenced block containing the `decision` object returned by record_decision, copied verbatim (it already includes display_id, mode_label and evidence_frame_url), valid JSON on a single line:',
     '```decision',
-    '{"claim_id":"…","action":"refund|replacement|escalated|denied","amount":24.0,"policy_clauses":["P2","P4"],"evidence":"white ceramic mug, chip on rim at 0:03","fraud_matches":0,"txn_id":"txn_…","latency_ms":18342}',
+    '{"claim_id":"…","display_id":"C-A1042-F809","order_id":"A1042","action":"refund|replacement|escalated|denied","amount":24.0,"policy_clauses":["P2","P4"],"reason":"…","evidence":"white ceramic mug, chip on rim at 0:03","evidence_frame_url":"/evidence/frames/…/3.jpg","fraud_matches":0,"txn_id":"txn_…","latency_ms":18342,"mode":"llm","mode_label":"AI model · …"}',
     '```',
-    'Nothing may follow the block. Never say a refund or replacement was issued unless you hold a txn_id from execute_refund / create_replacement. Amounts are USD numbers. If the message is not about a damaged or defective item, answer briefly without executing anything.',
+    'Nothing may follow the block. Never say a refund or replacement was issued unless you hold a txn_id from execute_refund / create_replacement. Amounts are USD numbers.',
   ].join('\n');
 }
 
@@ -281,7 +286,13 @@ function sseFrame(event: string, data: Record<string, unknown>): string {
  * (b) emit a `decision` event as soon as record_decision has run, and (c) append the fenced
  * decision block as a final text_delta if the model's text does not already contain one.
  */
-function wrapDecisionStream(inner: ReadableStream<Uint8Array>, state: ClaimsToolState, claimId: string): ReadableStream<Uint8Array> {
+function wrapDecisionStream(
+  inner: ReadableStream<Uint8Array>,
+  toolset: ClaimsToolSet,
+  claimId: string,
+  mode: AgentMode,
+): ReadableStream<Uint8Array> {
+  const { state, finalizeNeedsInfo } = toolset;
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -293,8 +304,11 @@ function wrapDecisionStream(inner: ReadableStream<Uint8Array>, state: ClaimsTool
     decisionEmitted = true;
     controller.enqueue(encoder.encode(sseFrame('decision', {
       claim_id: claimId,
+      display_id: state.recorded.block.display_id,
       decision: state.recorded.block,
       status: state.recorded.claim.status,
+      mode,
+      mode_label: state.modeLabel,
       trace_id: state.recorded.trace_id ?? null,
       agentx_emitted: state.recorded.agentx_emitted,
     })));
@@ -302,9 +316,11 @@ function wrapDecisionStream(inner: ReadableStream<Uint8Array>, state: ClaimsTool
 
   const transformer: Transformer<Uint8Array, Uint8Array> = {
     start(controller) {
-      controller.enqueue(encoder.encode(sseFrame('claim', { claim_id: claimId, status: 'processing' })));
+      controller.enqueue(encoder.encode(sseFrame('claim', {
+        claim_id: claimId, display_id: state.displayId, status: 'processing', mode, mode_label: state.modeLabel,
+      })));
     },
-    transform(chunk, controller) {
+    async transform(chunk, controller) {
       buffer += decoder.decode(chunk, { stream: true });
       const parts = buffer.split('\n\n');
       buffer = parts.pop() ?? '';
@@ -321,6 +337,13 @@ function wrapDecisionStream(inner: ReadableStream<Uint8Array>, state: ClaimsTool
           try { text += (JSON.parse(data) as { delta?: string }).delta ?? ''; } catch { /* ignore */ }
         }
         if (event === 'done') {
+          // Unknown order / no evidence: park the claim (needs_info) so the desk sees it — no ledger writes.
+          if (!state.recorded && state.needsInfo) {
+            const fin = await finalizeNeedsInfo();
+            if (fin && !text.trim()) {
+              controller.enqueue(encoder.encode(sseFrame('text_delta', { delta: state.needsInfo.customer_message })));
+            }
+          }
           emitDecisionIfReady(controller);
           if (state.recorded && !DECISION_RE.test(text)) {
             controller.enqueue(encoder.encode(sseFrame('text_delta', { delta: formatDecisionBlock(state.recorded.block) })));
@@ -367,7 +390,7 @@ export async function onRequest(context: AgentContext) {
   const claimsStore = await getClaimsStore(env);
   const policy = await getPolicy(claimsStore);
   const memories = createMemoriesClient(env);
-  const { tools, state } = createClaimsTools({
+  const toolset = createClaimsTools({
     env,
     store: claimsStore,
     memories,
@@ -375,10 +398,12 @@ export async function onRequest(context: AgentContext) {
     claimId,
     conversationId,
     requestStartedAt: startedAt,
+    mode,
     model,
     hints,
     logger,
   });
+  const { tools, state, finalizeNeedsInfo } = toolset;
   const mcpServer = createSdkMcpServer({ name: MCP_SERVER_NAME, version: '1.0.0', tools, alwaysLoad: true });
   const allowedTools = TOOL_NAMES.map(name => `mcp__${MCP_SERVER_NAME}__${name}`);
 
@@ -401,7 +426,7 @@ export async function onRequest(context: AgentContext) {
   };
 
   if (mode === 'deterministic') {
-    const events = runDeterministicClaim({ message, hints, tools, state, signal, logger });
+    const events = runDeterministicClaim({ message, hints, tools, state, finalizeNeedsInfo, signal, logger });
 
     if (!streamMode) {
       let text = '';
@@ -418,13 +443,15 @@ export async function onRequest(context: AgentContext) {
       if (!block && state.recorded) { block = state.recorded.block; text += formatDecisionBlock(block); }
       await persistAssistant(text);
       const status = error ? 'error' : signal?.aborted ? 'stopped' : 'ok';
-      logger.log(`[result] claim=${claimId} mode=deterministic status=${status} action=${block?.action ?? '-'} latency=${Date.now() - startedAt}ms`);
+      logger.log(`[result] claim=${claimId} display=${state.displayId} mode=deterministic status=${status} action=${block?.action ?? '-'} latency=${Date.now() - startedAt}ms`);
       return jsonResponse({
         status,
         mode,
+        mode_label: state.modeLabel,
         text,
         decision: block,
         claim_id: claimId,
+        display_id: state.displayId,
         claim_status: state.recorded?.claim.status ?? null,
         trace_id: state.recorded?.trace_id ?? null,
         conversation_id: conversationId,
@@ -442,14 +469,17 @@ export async function onRequest(context: AgentContext) {
         const send = (event: string, data: Record<string, unknown>) => controller.enqueue(encoder.encode(sseFrame(event, data)));
         let text = '';
         let stopped = false;
-        send('claim', { claim_id: claimId, status: 'processing', mode });
+        send('claim', { claim_id: claimId, display_id: state.displayId, status: 'processing', mode, mode_label: state.modeLabel });
         try {
           for await (const ev of events) {
             if (signal?.aborted) { stopped = true; break; }
             switch (ev.type) {
               case 'tool_called': send('tool_called', { tool: ev.tool }); break;
               case 'text_delta': send('text_delta', { delta: ev.delta }); break;
-              case 'decision': send('decision', { claim_id: claimId, decision: ev.block, status: ev.status, trace_id: ev.trace_id ?? null, agentx_emitted: ev.agentx_emitted }); break;
+              case 'decision': send('decision', {
+                claim_id: claimId, display_id: ev.block.display_id, decision: ev.block, status: ev.status,
+                mode, mode_label: state.modeLabel, trace_id: ev.trace_id ?? null, agentx_emitted: ev.agentx_emitted,
+              }); break;
               case 'done': text = ev.text; break;
             }
           }
@@ -487,6 +517,12 @@ export async function onRequest(context: AgentContext) {
   if (!streamMode) {
     const run = await runToCompletion(prompt, options, signal);
     let text = run.text;
+    // Unknown order / no evidence: park the claim as needs_info (no ledger side effects) so the desk sees it.
+    if (!state.recorded && state.needsInfo && !run.error) {
+      const fin = await finalizeNeedsInfo();
+      if (fin && !text.trim()) text = state.needsInfo.customer_message;
+    }
+    // The wrapper guarantees the block: synthesize it from the recorded state when the model omitted it.
     if (state.recorded && !DECISION_RE.test(text)) text += formatDecisionBlock(state.recorded.block);
     const decision = parseDecisionBlock(text) ?? state.recorded?.block ?? null;
     await persistAssistant(text);
@@ -494,13 +530,15 @@ export async function onRequest(context: AgentContext) {
     const authFailure = !decision && /not logged in|please run \/login|invalid api key|authentication_failed|api key/i.test(text);
     if (authFailure && !run.error) run.error = `model_auth: ${text.slice(0, 200)}`;
     const status = run.error ? 'error' : run.stopped ? 'stopped' : 'ok';
-    logger.log(`[result] claim=${claimId} mode=llm status=${status} action=${decision?.action ?? '-'} turns=${run.numTurns ?? '-'} latency=${Date.now() - startedAt}ms`);
+    logger.log(`[result] claim=${claimId} display=${state.displayId} mode=llm status=${status} action=${decision?.action ?? '-'} turns=${run.numTurns ?? '-'} latency=${Date.now() - startedAt}ms`);
     return jsonResponse({
       status,
       mode,
+      mode_label: state.modeLabel,
       text,
       decision,
       claim_id: claimId,
+      display_id: state.displayId,
       claim_status: state.recorded?.claim.status ?? null,
       trace_id: state.recorded?.trace_id ?? null,
       conversation_id: conversationId,
@@ -524,7 +562,7 @@ export async function onRequest(context: AgentContext) {
     userId,
   });
 
-  return new Response(wrapDecisionStream(stream, state, claimId), {
+  return new Response(wrapDecisionStream(stream, toolset, claimId, mode), {
     status: 200,
     headers: {
       'Content-Type': 'text/event-stream; charset=utf-8',

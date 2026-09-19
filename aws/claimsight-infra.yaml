@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  ClaimSight production support on AWS: an S3 bucket for the evidence archive (versioned, private,
+  SSE-S3) and one small EC2 host running the AgentX self-hosted engine and the MediaMTX live relay.
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: SSH key pair for the host
+  AdminCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR allowed to reach SSH and the AgentX dashboard (narrow this to your IP)
+  InstanceType:
+    Type: String
+    Default: t3.small
+  LatestAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+Resources:
+  EvidenceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub claimsight-evidence-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration: { Status: Enabled }
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-versions
+            Status: Enabled
+            NoncurrentVersionExpiration: { NoncurrentDays: 90 }
+  HostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ClaimSight host (AgentX + live relay)
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 22,   ToPort: 22,   CidrIp: !Ref AdminCidr }
+        - { IpProtocol: tcp, FromPort: 4700, ToPort: 4700, CidrIp: !Ref AdminCidr }
+        - { IpProtocol: tcp, FromPort: 1935, ToPort: 1935, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 8554, ToPort: 8554, CidrIp: 0.0.0.0/0 }
+  HostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: evidence-archive
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ s3:PutObject, s3:GetObject, s3:ListBucket ]
+                Resource: [ !GetAtt EvidenceBucket.Arn, !Sub "${EvidenceBucket.Arn}/*" ]
+  HostProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [ !Ref HostRole ]
+  Host:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmi
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref HostProfile
+      SecurityGroupIds: [ !Ref HostSecurityGroup ]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          curl -fsSL https://raw.githubusercontent.com/vnmoorthy/claimsight/main/aws/ec2-user-data.sh | bash
+      Tags:
+        - { Key: Name, Value: claimsight-host }
+Outputs:
+  EvidenceBucketName:
+    Value: !Ref EvidenceBucket
+    Description: Set AWS_S3_BUCKET to this value
+  HostPublicIp:
+    Value: !GetAtt Host.PublicIp
+    Description: AgentX at http://<ip>:4700, RTMP push rtmp://<ip>/live/cam, RTSP pull rtsp://<ip>:8554/live/cam

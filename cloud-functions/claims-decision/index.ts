@@ -15,7 +15,7 @@ import type { CloudFunctionContext } from '@edgeone/types';
 import { createLogger } from '../_logger';
 import {
   getClaimsStore, resolveEnv, readJsonBody, jsonResponse, errorResponse, pickString,
-  getClaim, getOrder, bumpCounters, nowIso, round2,
+  getClaim, getOrder, bumpCounters, nowIso, round2, withDisplayFields,
 } from '../_kv';
 import { applyRefund, applyReplacement, findItem } from '../_ledger';
 
@@ -36,10 +36,13 @@ export async function onRequestPost(context: CloudFunctionContext): Promise<Resp
 
   try {
     const store = await getClaimsStore(env);
-    const claim = await getClaim(store, claimId);
-    if (!claim) return errorResponse(404, 'claim_not_found', `Claim ${claimId} not found`, { claim_id: claimId });
+    const found = await getClaim(store, claimId);
+    if (!found) return errorResponse(404, 'claim_not_found', `Claim ${claimId} not found`, { claim_id: claimId });
+    const claim = withDisplayFields(found);
     if (claim.status !== 'pending_review') {
-      return errorResponse(409, 'claim_not_pending', `Claim ${claimId} is ${claim.status}, not pending_review`, { claim_id: claimId, status: claim.status });
+      return errorResponse(409, 'claim_not_pending', `Claim ${claim.display_id} is ${claim.status}, not pending_review`, {
+        claim_id: claimId, display_id: claim.display_id, status: claim.status,
+      });
     }
 
     if (decision === 'deny') {
@@ -49,8 +52,8 @@ export async function onRequestPost(context: CloudFunctionContext): Promise<Resp
       claim.updated_at = claim.decided_at;
       await store.set(`claims:${claim.claim_id}`, claim);
       const counters = await bumpCounters(store, { denied: 1 });
-      logger.log(`[claims-decision] ${claimId} denied by ${decidedBy}`);
-      return jsonResponse({ ok: true, claim, counters });
+      logger.log(`[claims-decision] ${claimId} (${claim.display_id}) denied by ${decidedBy}`);
+      return jsonResponse({ ok: true, claim_id: claim.claim_id, display_id: claim.display_id, claim, counters });
     }
 
     // approve → execute the recommended action with human approval
@@ -70,11 +73,11 @@ export async function onRequestPost(context: CloudFunctionContext): Promise<Resp
       : await applyRefund(store, { order_id: claim.order_id, amount, claim_id: claim.claim_id, reason: note || claim.decision.reason, human_approved: true });
 
     if (!outcome.ok) {
-      logger.log(`[claims-decision] ${claimId} approve blocked: ${outcome.body.error}`);
-      return jsonResponse({ ...outcome.body, claim_id: claimId }, outcome.status);
+      logger.log(`[claims-decision] ${claimId} (${claim.display_id}) approve blocked: ${outcome.body.error}`);
+      return jsonResponse({ ...outcome.body, claim_id: claimId, display_id: claim.display_id }, outcome.status);
     }
 
-    const fresh = (await getClaim(store, claimId)) ?? claim; // ledger attached txn_id
+    const fresh = withDisplayFields((await getClaim(store, claimId)) ?? claim); // ledger attached txn_id
     fresh.status = wantsReplacement ? 'replacement' : 'approved';
     fresh.decision = {
       ...fresh.decision,
@@ -88,8 +91,8 @@ export async function onRequestPost(context: CloudFunctionContext): Promise<Resp
     fresh.updated_at = fresh.decided_at;
     await store.set(`claims:${fresh.claim_id}`, fresh);
     const counters = await bumpCounters(store, {});
-    logger.log(`[claims-decision] ${claimId} approved by ${decidedBy} → ${outcome.body.txn_id}`);
-    return jsonResponse({ ok: true, claim: fresh, txn: outcome.body, counters });
+    logger.log(`[claims-decision] ${claimId} (${fresh.display_id}) approved by ${decidedBy} → ${outcome.body.txn_id}`);
+    return jsonResponse({ ok: true, claim_id: fresh.claim_id, display_id: fresh.display_id, claim: fresh, txn: outcome.body, counters });
   } catch (e) {
     logger.error('[claims-decision] failed:', e);
     return errorResponse(500, 'decision_failed', e instanceof Error ? e.message : String(e));

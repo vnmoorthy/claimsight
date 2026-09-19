@@ -115,3 +115,18 @@ MySQL endpoint) for the demo screen.
   column to `JSON` (query 6 then uses `JSON_EXTRACT`) or upgrade the warehouse.
 - `load.py` prints `fetched 0 claims` — the backend needs claims first; send one through the
   ClaimSight chat (order A1042 is the clean auto-approve demo) and re-run.
+
+
+## Validated locally against Apache Doris
+
+VeloDB Cloud is built on Apache Doris, so the kit can be exercised without an account:
+
+```bash
+docker run -d --name claimsight-doris -p 9030:9030 -p 8030:8030 apache/doris:doris-all-in-one-2.1.0   # ~10 GB image, 2–3 min to boot
+export VELODB_HOST=127.0.0.1 VELODB_PORT=9030 VELODB_USER=root VELODB_PASSWORD= VELODB_DB=claimsight
+# single node: append  PROPERTIES ("replication_num" = "1")  to each CREATE TABLE (sed 's/BUCKETS 4;/BUCKETS 4 PROPERTIES ("replication_num" = "1");/')
+python velodb/load.py --schema          # applies the schema, then upserts GET /claims-list from the running backend
+mysql -h 127.0.0.1 -P 9030 -u root claimsight < velodb/dashboard.sql
+```
+
+Result on Sept 19, 2026: schema applied, `upserted 3 claims_events, 1 claim_fraud_matches, 3 evidence_captions`, 12 dashboard queries ran, 0 failed.

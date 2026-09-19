@@ -1,5 +1,5 @@
 {
-  "_comment": "Seed orders for ClaimSight (Northwind Home). `delivered_days_ago` / `placed_days_ago` are resolved to absolute ISO timestamps relative to the moment POST /seed runs, so the return-window scenarios stay valid on any demo day. `items[].in_stock` drives the replacement-first rule (P4). `scenario` is documentation only.",
+  "_comment": "Seed orders for ClaimSight (Northwind Home). `delivered_days_ago` / `placed_days_ago` are resolved to absolute ISO timestamps relative to the moment POST /seed runs, so the return-window scenarios stay valid on any demo day. `items[].in_stock` drives the replacement-first rule (P4). `customer_name` is the display name for the desk / Slack (customer_id stays the key). `scenario` is documentation only.",
   "customers": {
     "c_alice": { "customer_id": "c_alice", "name": "Alice Moreno", "email": "alice@example.com" },
     "c_mallory": { "customer_id": "c_mallory", "name": "Mallory Quinn", "email": "mallory@example.com" },
@@ -12,6 +12,7 @@
     {
       "order_id": "A1042",
       "customer_id": "c_alice",
+      "customer_name": "Alice Moreno",
       "email": "alice@example.com",
       "status": "delivered",
       "placed_days_ago": 6,
@@ -27,6 +28,7 @@
     {
       "order_id": "A1043",
       "customer_id": "c_mallory",
+      "customer_name": "Mallory Quinn",
       "email": "mallory@example.com",
       "status": "delivered",
       "placed_days_ago": 6,
@@ -42,6 +44,7 @@
     {
       "order_id": "A1044",
       "customer_id": "c_bob",
+      "customer_name": "Bob Okafor",
       "email": "bob@example.com",
       "status": "delivered",
       "placed_days_ago": 9,
@@ -57,6 +60,7 @@
     {
       "order_id": "A1045",
       "customer_id": "c_carol",
+      "customer_name": "Carol Nguyen",
       "email": "carol@example.com",
       "status": "delivered",
       "placed_days_ago": 14,
@@ -72,6 +76,7 @@
     {
       "order_id": "A1046",
       "customer_id": "c_dave",
+      "customer_name": "Dave Lindqvist",
       "email": "dave@example.com",
       "status": "delivered",
       "placed_days_ago": 10,
@@ -87,6 +92,7 @@
     {
       "order_id": "A1047",
       "customer_id": "c_erin",
+      "customer_name": "Erin Patel",
       "email": "erin@example.com",
       "status": "delivered",
       "placed_days_ago": 5,
@@ -103,6 +109,7 @@
     {
       "order_id": "A1048",
       "customer_id": "c_bob",
+      "customer_name": "Bob Okafor",
       "email": "bob@example.com",
       "status": "delivered",
       "placed_days_ago": 24,
@@ -118,6 +125,7 @@
     {
       "order_id": "A1049",
       "customer_id": "c_alice",
+      "customer_name": "Alice Moreno",
       "email": "alice@example.com",
       "status": "delivered",
       "placed_days_ago": 44,
@@ -133,6 +141,7 @@
     {
       "order_id": "A1050",
       "customer_id": "c_carol",
+      "customer_name": "Carol Nguyen",
       "email": "carol@example.com",
       "status": "delivered",
       "placed_days_ago": 7,
@@ -148,6 +157,7 @@
     {
       "order_id": "A1051",
       "customer_id": "c_mallory",
+      "customer_name": "Mallory Quinn",
       "email": "mallory@example.com",
       "status": "delivered",
       "placed_days_ago": 4,
@@ -163,6 +173,7 @@
     {
       "order_id": "A1061",
       "customer_id": "c_dave",
+      "customer_name": "Dave Lindqvist",
       "email": "dave@example.com",
       "status": "delivered",
       "placed_days_ago": 49,
@@ -178,6 +189,7 @@
     {
       "order_id": "A1077",
       "customer_id": "c_erin",
+      "customer_name": "Erin Patel",
       "email": "erin@example.com",
       "status": "delivered",
       "placed_days_ago": 9,

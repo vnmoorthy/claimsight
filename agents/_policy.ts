@@ -135,6 +135,7 @@ export function statusForAction(action: ClaimAction): ClaimStatus {
     case 'replacement': return 'replacement';
     case 'escalated': return 'pending_review';
     case 'denied': return 'denied';
+    case 'needs_info': return 'needs_info';
   }
 }
 

@@ -212,3 +212,50 @@ If the model omits it, the handler appends the block recorded by `record_decisio
 ## License
 
 MIT.
+
+## Loop 1 polish (client-facing demo)
+
+What changed in the backend contract for the demo pass. Nothing under `src/` was touched; the fields below are additive so older records and clients keep working (`listClaims` backfills `display_id` / `mode_label` on read).
+
+### Product-voice reasons
+
+Every `reason` string that reaches the customer or the Decision Card is one plain-English sentence with no video ids, customer ids, claim ids, thresholds or error codes — those stay in structured fields (`fraud.matches[].video_id`, `error`, `detail`). This covers the deterministic engine, the tool outputs the model sees, and the Slack text:
+
+| Where | Before | Now |
+|-------|--------|-----|
+| `fraud_check.reason` | `Evidence matches vid_stub_mug_alice (score 0.93, customer c_alice, order A1042) …` | `Evidence matches footage submitted for order A1042 by another customer (similarity 0.93)` |
+| `execute_refund` / `create_replacement` rejection | server message only | adds `reason` (`Refund needs a teammate: a refund was already issued for this order`), keeps the code in `error` and the server text in `detail` |
+| evidence not ready | `Evidence could not be reviewed (video_not_ready)` | `The evidence video is still being processed` |
+| customer reply on escalation | `Your claim reference is clm_…` | `Your claim reference is C-A1043-F809` |
+
+The system prompt (LLM mode) now spells out the same rule for `escalate.reason` / `record_decision.reason`.
+
+### Friendly ids, names, frames, mode labels
+
+* **`display_id`** = `C-<order_id>-<4 uppercase hex>` (e.g. `C-A1043-F809`), derived from the tail of `claim_id` (`displayIdFor` in `_kv.ts`; non-hex tails such as the seeded `clm_seed_alice_mug` hash to 4 hex digits; no order → `C-<hex>`). Present on claim records, the ```decision block, `/claims-list`, `/claims-record`, `/claims-decision`, `fraud.matches[].display_id`, the `claim` / `decision` SSE events, the `stream:false` response, the Slack line and the AgentX root span (`claimsight.display_id`). `claim_id` stays the API key everywhere.
+* **`customer_name`** lives on each order in `data/orders.json` (names match the existing `customers` map: Alice Moreno, Mallory Quinn, Bob Okafor, Carol Nguyen, Dave Lindqvist, Erin Patel; `customer_id` keys unchanged) and is carried through `OrderRecord`, `lookup_order`, claim records, `/claims-list`, `fraud.matches[].customer_name`, the block and Slack.
+* **Evidence frames.** `data/stubs/moments.json` points at same-origin posters `/evidence/frames/<video_id>/{0,3}.jpg` (files under `public/evidence/frames/`; the second frame is always `t=3` now — the `2.jpg`/`4.jpg` references had no files). `inspect_evidence` returns `frames: [{t,url}]` and `frame_url` (the `t=3` frame when present, else the first); the claim record stores `evidence_frame_url`, which is also in the block and `/claims-list`. The stub fraud search still keys off the `/frames/<video_id>/` segment of the query URL, so A1043 keeps detecting the A1042 twin. `data/demo_evidence.json` items carry `frame_url` for the dropdown.
+* **Mode labels.** `mode: 'deterministic' | 'llm'` is unchanged; `mode_label` is `Policy engine` or `AI model · <model id>` on the `stream:false` response, the `claim` and `decision` SSE events, the block, claim records and `/stats` (`mode` / `mode_label` of the most recent claim). `/stats` also returns `backend_label`: `Demo data` when storage is `memory` or Memories.ai is stubbed, otherwise `Live`.
+* **Decision block** now: `{claim_id, display_id, order_id, customer_name, action, amount, policy_clauses, reason, evidence, evidence_frame_url, fraud_matches, txn_id, latency_ms, mode, mode_label}`. The wrapper still appends it from recorded state when the model omits it.
+
+### Fraud-twin resolution
+
+`fraud_check` maps a matched video to its claim through `GET /claims-list?video_id=` first (the cloud-function store is the source of truth; locally the agent and the functions keep separate in-memory maps) and only then the agent-local `video_index` (seeded stubs). In a demo session the A1043 escalation therefore names the A1042 claim the audience just saw (`matches C-A1042-7AB0`), not the seed placeholder.
+
+### Slack escalation
+
+One line, product voice, built in `escalate` (`agents/claims/_tools.ts`):
+
+```
+ClaimSight needs a decision — C-A1043-F809 · Mallory Quinn · $24.00 mug · Reason: Evidence matches footage submitted for order A1042 by another customer (similarity 0.93) · Fraud: matches C-A1042-7AB0 (similarity 0.93) · Open the desk: http://localhost:5173/#desk?claim=clm_…
+```
+
+The link uses `PUBLIC_UI_URL` (new in `.env.example`, default `http://localhost:5173`; `UI_BASE_URL` remains a legacy fallback). The tool result exposes `slack_text` and `desk_url`; `SLACK_WEBHOOK_URL` unset → `slack_notified:false` with no error. The reviewer paragraph passed as `escalate(summary)` is stored as `decision.note`.
+
+### `needs_info` (unknown order / no evidence)
+
+`POST /claims` with an order id that does not exist answers with one customer sentence — `I couldn't find order A9999 — check the number on your confirmation email.` — and **no ledger side effects** (`/stats.derived.refunded_total` unchanged, no `/refund` call, no `video_index` write). The claim is still recorded so the desk shows it: `status: "needs_info"` (new member of the status union; `/claims-record` accepts it with an empty `customer_id`), `decision.action: "needs_info"`, and a decision block with `action: "needs_info"`. `stream:false` returns `{status:"ok", claim_status:"needs_info", decision:{action:"needs_info", display_id:"C-A9999-…", …}}`; the SSE stream emits the same `decision` event. The same path parks a claim when no video/evidence summary is attached (`kind: "evidence_missing"`). These records bump `counters.needs_info` instead of `counters.claims`, so the auto-approval rate is not diluted; `/stats.derived.needs_info` counts them. In LLM mode `lookup_order` sets the state and the wrapper (`finalizeNeedsInfo`) records it after the model replies. `POST /orders-lookup` uses the same 404 shape and sentence: `{error:"order_not_found", message:"I couldn't find order A9999 — check the number on your confirmation email.", order_id, found:false}`; hits return `found:true` plus the order.
+
+### LLM readiness
+
+`buildSystemPrompt` (`agents/claims/index.ts`) was rewritten for production tone: no demo language, fixed tool order (lookup → policy → inspect → fraud → decide → execute/escalate → record), facts only from tool results, product-voice reasons, customer reply under 120 words that quotes the `display_id` (never the internal claim id), and a final fenced block copied verbatim from `record_decision` (which already carries `display_id`, `mode_label`, `evidence_frame_url`). Tool schemas are unchanged except for the added output fields. Untested end-to-end against a live gateway in this loop (no model key configured locally); the deterministic engine exercises the same tool handlers and the golden set passes 30/30.

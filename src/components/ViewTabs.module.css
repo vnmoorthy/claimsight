@@ -50,3 +50,12 @@
   from { transform: scale(.6); opacity: 0; }
   to   { transform: scale(1);  opacity: 1; }
 }
+
+.labelShort { display: none; }
+
+/* Narrow phones: "Desk" keeps the badge readable next to the compact controls */
+@media (max-width: 640px) {
+  .tab { padding: 0 10px; gap: 6px; }
+  .labelFull { display: none; }
+  .labelShort { display: inline; }
+}

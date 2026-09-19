@@ -2,7 +2,6 @@ import { useRef, useState, type CSSProperties, type ChangeEvent } from 'react';
 import type { DemoEvidence, EvidenceStage, EvidenceState } from '../types';
 import { useT, type MessageKeys } from '../i18n';
 import { EVIDENCE_STAGES } from '../lib/useEvidence';
-import { shortId } from '../lib/format';
 import { IconAlert, IconCheck, IconChevronDown, IconClose, IconPaperclip, IconSpinner, IconVideo } from './icons';
 import styles from './EvidenceBar.module.css';
 
@@ -76,10 +75,11 @@ export default function EvidenceBar({
               spellCheck={false}
               maxLength={16}
               aria-label={t('evidence.order')}
+              data-testid="order-input"
             />
           </label>
-          {orderHint && <span className={styles.orderHint} title={orderHint}>{orderHint}</span>}
-          {!orderHint && orderMissing && <span className={`${styles.orderHint} ${styles.orderHintMissing}`}>{t('evidence.orderUnknown')}</span>}
+          {orderHint && <span className={styles.orderHint} title={orderHint} data-testid="order-hint">{orderHint}</span>}
+          {!orderHint && orderMissing && <span className={`${styles.orderHint} ${styles.orderHintMissing}`} data-testid="order-hint">{t('evidence.orderUnknown')}</span>}
         </div>
 
         <div className={styles.evidenceGroup}>
@@ -187,7 +187,7 @@ function EvidencePill({ evidence, fileError, onClear }: { evidence: EvidenceStat
           <span className={styles.pillText}>
             <b>{t('evidence.ready')}</b> · {evidence.label}
             {evidence.source === 'demo' && <em className={styles.demoBadge}>{t('evidence.demoBadge')}</em>}
-            <code className={`${styles.videoId} mono`}>{shortId(evidence.videoId, 14, 4)}</code>
+            <code className={`${styles.videoId} mono`} title={evidence.videoId}>{evidence.videoId}</code>
           </span>
           {clearBtn}
         </div>

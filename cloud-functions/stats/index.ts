@@ -10,9 +10,10 @@
 
 import type { CloudFunctionContext } from '@edgeone/types';
 import { createLogger } from '../_logger';
+import { isArchiveEnabled } from '../_archive';
 import {
   getClaimsStore, resolveEnv, getCounters, listClaims, jsonResponse, errorResponse,
-  isMemoriesStubbed, round2,
+  isMemoriesStubbed, backendLabelFor, round2,
 } from '../_kv';
 
 const logger = createLogger('stats');
@@ -39,17 +40,25 @@ export async function onRequestGet(context: CloudFunctionContext): Promise<Respo
       refunded_total: round2(counters.refunded_total),
       fraud_flags: counters.fraud_flags,
       pending_review: all.filter(c => c.status === 'pending_review').length,
+      needs_info: all.filter(c => c.status === 'needs_info').length,
       decided_by_agent: decidedByAgent,
       median_latency_ms: percentile(latencies, 50),
       p95_latency_ms: percentile(latencies, 95),
       claims_total: all.length,
     };
-    logger.log(`[stats] claims=${all.length} auto=${counters.auto_approved} pending=${derived.pending_review}`);
+    // Labels for the status strip: which engine made the last decision, and whether this is demo or live data.
+    const last = recent[0];
+    const backendLabel = backendLabelFor(store.backend, env);
+    logger.log(`[stats] claims=${all.length} auto=${counters.auto_approved} pending=${derived.pending_review} backend=${backendLabel}`);
     return jsonResponse({
       counters,
       derived,
       recent,
+      mode: last?.mode ?? null,
+      mode_label: last?.mode_label ?? null,
       backend: store.backend,
+      backend_label: backendLabel,
+      archive_enabled: isArchiveEnabled(env),
       memories_stubbed: isMemoriesStubbed(env),
       generated_at: new Date().toISOString(),
     });

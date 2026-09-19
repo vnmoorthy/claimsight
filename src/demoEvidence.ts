@@ -34,3 +34,14 @@ function coerce(raw: unknown): DemoEvidence[] {
 const fromFile = coerce(Object.values(bundled)[0]);
 
 export const DEMO_EVIDENCE_FALLBACK: DemoEvidence[] = fromFile.length > 0 ? fromFile : INLINE_FALLBACK;
+
+/**
+ * Human label for a demo clip id ("Chipped mug — A1042 (clean auto-approve)").
+ * Two demo entries can share footage (the fraud-twin scenario), so the order
+ * disambiguates when known. Returns undefined for uploaded (non-demo) clips.
+ */
+export function demoClipLabel(videoId?: string | null, orderId?: string | null): string | undefined {
+  if (!videoId) return undefined;
+  const exact = orderId ? DEMO_EVIDENCE_FALLBACK.find(d => d.video_id === videoId && d.order_id.toUpperCase() === orderId.toUpperCase()) : undefined;
+  return (exact ?? DEMO_EVIDENCE_FALLBACK.find(d => d.video_id === videoId))?.label;
+}

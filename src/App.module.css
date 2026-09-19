@@ -64,20 +64,10 @@
   background: var(--surface);
 }
 
-.conversation .traceFab {
-  position: absolute;
-  right: 14px;
-  top: 12px;
-  z-index: 3;
-  display: none;
-  box-shadow: var(--shadow-1);
-}
-
 @media (max-width: 1099px) {
   .chatStage { grid-template-columns: minmax(0, 1fr); }
   .conversation { border-right: 0; }
   .tracePane { display: none; }
-  .conversation .traceFab { display: inline-flex; }
 }
 
 /* History loading overlay */

@@ -13,7 +13,7 @@ workbuddy/
 ```
 
 The skill only needs the ClaimSight backend to be reachable (`CLAIMSIGHT_URL`). It uses three
-endpoints from `SPEC.md` section 2: `GET /claims?status=pending_review`, `POST /claims/decision`
+endpoints from `SPEC.md` section 2: `GET /claims?status=pending_review`, `POST /claims-decision`
 and `GET /stats`. No API key is involved.
 
 ## 1. Add the skill in WorkBuddy
@@ -46,7 +46,7 @@ WorkBuddy can call the tools directly instead of composing HTTP requests:
    backend README documents for stdio).
 3. Save, then flip `mcp.enabled: true` in `refund-desk/config.yaml`. The instructions in
    `SKILL.md` map 1:1: `list_claims(status="pending_review")` ↔ `GET /claims?status=pending_review`,
-   `decide_claim(claim_id, decision, note)` ↔ `POST /claims/decision`, `get_stats()` ↔ `GET /stats`.
+   `decide_claim(claim_id, decision, note)` ↔ `POST /claims-decision`, `get_stats()` ↔ `GET /stats`.
 
 If no MCP server is exposed, leave `mcp.enabled: false` — nothing else changes.
 

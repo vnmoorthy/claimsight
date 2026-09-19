@@ -33,19 +33,22 @@
 .headMeta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 0; }
 .modeChip {
   font-size: 10px;
-  letter-spacing: .1em;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   color: var(--ink-2);
-}
-.claimId {
-  font-size: var(--t-11);
-  color: var(--muted);
-  max-width: 180px;
+  white-space: nowrap;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.claimId {
+  font-size: var(--t-12);
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--ink);
   white-space: nowrap;
 }
 
@@ -84,11 +87,18 @@
   flex-shrink: 0;
 }
 .evidenceText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.evidenceLabel { font-size: var(--t-13); font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.evidenceId { display: flex; align-items: center; gap: 6px; font-size: var(--t-11); color: var(--ink-2); flex-wrap: wrap; }
+.evidenceLabel { display: flex; align-items: center; gap: 6px; font-size: var(--t-13); font-weight: 600; color: var(--ink); min-width: 0; }
+.evidenceName { min-width: 0; overflow-wrap: anywhere; }
+.evidenceKicker { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 500; flex-shrink: 0; }
+.evidenceId { display: flex; align-items: center; gap: 6px; font-size: var(--t-11); color: var(--muted); flex-wrap: wrap; min-width: 0; }
+.evidenceRawId { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; max-width: 100%; }
+.frameWrap { padding: 0 12px 10px; }
 .tag, .tagBusy {
   font-style: normal;
+  font-family: var(--font-mono);
+  font-weight: 500;
   font-size: 10px;
+  flex-shrink: 0;
   letter-spacing: .08em;
   text-transform: uppercase;
   padding: 0 6px;

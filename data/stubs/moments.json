@@ -1,5 +1,5 @@
 {
-  "_comment": "Canned responses for GET /moments/{video_id}@{start}-{end}?expand=caption,frame (Memories.ai shape: {ref, caption:[{start,end,text}], frames:[{t,url}]}). Frame URLs embed the video id so the search stub can key off them. Keyed by video_id; `default` for unknown ids.",
+  "_comment": "Canned responses for GET /moments/{video_id}@{start}-{end}?expand=caption,frame (Memories.ai shape: {ref, caption:[{start,end,text}], frames:[{t,url}]}). Frame URLs are same-origin posters under public/evidence/frames/<video_id>/{0,3}.jpg and embed the video id so the search stub can key off the /frames/<video_id>/ segment; inspect_evidence prefers the t=3 frame. Keyed by video_id; `default` for unknown ids.",
   "vid_stub_mug_alice": {
     "ref": "vid_stub_mug_alice@0-10",
     "caption": [
@@ -7,8 +7,8 @@
       { "start": 2, "end": 5, "text": "Close-up of the mug rim: a chip on the rim with a thin crack in the glaze is clearly visible." }
     ],
     "frames": [
-      { "t": 0, "url": "https://stub.memories.local/frames/vid_stub_mug_alice/0.jpg" },
-      { "t": 3, "url": "https://stub.memories.local/frames/vid_stub_mug_alice/3.jpg" }
+      { "t": 0, "url": "/evidence/frames/vid_stub_mug_alice/0.jpg" },
+      { "t": 3, "url": "/evidence/frames/vid_stub_mug_alice/3.jpg" }
     ]
   },
   "vid_stub_mug_mallory": {
@@ -18,8 +18,8 @@
       { "start": 2, "end": 5, "text": "Close-up of the mug rim: a chip on the rim with a thin crack in the glaze is clearly visible." }
     ],
     "frames": [
-      { "t": 0, "url": "https://stub.memories.local/frames/vid_stub_mug_mallory/0.jpg" },
-      { "t": 3, "url": "https://stub.memories.local/frames/vid_stub_mug_mallory/3.jpg" }
+      { "t": 0, "url": "/evidence/frames/vid_stub_mug_mallory/0.jpg" },
+      { "t": 3, "url": "/evidence/frames/vid_stub_mug_mallory/3.jpg" }
     ]
   },
   "vid_stub_headphones_crack": {
@@ -29,8 +29,8 @@
       { "start": 3, "end": 6, "text": "The headband is flexed and a crack in the plastic near the left hinge is visible." }
     ],
     "frames": [
-      { "t": 0, "url": "https://stub.memories.local/frames/vid_stub_headphones_crack/0.jpg" },
-      { "t": 4, "url": "https://stub.memories.local/frames/vid_stub_headphones_crack/4.jpg" }
+      { "t": 0, "url": "/evidence/frames/vid_stub_headphones_crack/0.jpg" },
+      { "t": 3, "url": "/evidence/frames/vid_stub_headphones_crack/3.jpg" }
     ]
   },
   "vid_stub_lamp_dent": {
@@ -40,8 +40,8 @@
       { "start": 3, "end": 7, "text": "The switch is pressed; the bulb flickers twice and stays off." }
     ],
     "frames": [
-      { "t": 0, "url": "https://stub.memories.local/frames/vid_stub_lamp_dent/0.jpg" },
-      { "t": 2, "url": "https://stub.memories.local/frames/vid_stub_lamp_dent/2.jpg" }
+      { "t": 0, "url": "/evidence/frames/vid_stub_lamp_dent/0.jpg" },
+      { "t": 3, "url": "/evidence/frames/vid_stub_lamp_dent/3.jpg" }
     ]
   },
   "vid_stub_tshirt_worn": {
@@ -51,8 +51,8 @@
       { "start": 3, "end": 6, "text": "Close-up of a faint brown stain on the chest; the neck tag has been cut off." }
     ],
     "frames": [
-      { "t": 0, "url": "https://stub.memories.local/frames/vid_stub_tshirt_worn/0.jpg" },
-      { "t": 3, "url": "https://stub.memories.local/frames/vid_stub_tshirt_worn/3.jpg" }
+      { "t": 0, "url": "/evidence/frames/vid_stub_tshirt_worn/0.jpg" },
+      { "t": 3, "url": "/evidence/frames/vid_stub_tshirt_worn/3.jpg" }
     ]
   },
   "vid_stub_vase_crack": {
@@ -62,8 +62,8 @@
       { "start": 3, "end": 7, "text": "Water is poured in and leaks from the crack onto the counter." }
     ],
     "frames": [
-      { "t": 0, "url": "https://stub.memories.local/frames/vid_stub_vase_crack/0.jpg" },
-      { "t": 2, "url": "https://stub.memories.local/frames/vid_stub_vase_crack/2.jpg" }
+      { "t": 0, "url": "/evidence/frames/vid_stub_vase_crack/0.jpg" },
+      { "t": 3, "url": "/evidence/frames/vid_stub_vase_crack/3.jpg" }
     ]
   },
   "vid_stub_no_damage": {
@@ -73,8 +73,8 @@
       { "start": 4, "end": 7, "text": "No chips, cracks or marks are visible; the mug is placed back on the table." }
     ],
     "frames": [
-      { "t": 0, "url": "https://stub.memories.local/frames/vid_stub_no_damage/0.jpg" },
-      { "t": 4, "url": "https://stub.memories.local/frames/vid_stub_no_damage/4.jpg" }
+      { "t": 0, "url": "/evidence/frames/vid_stub_no_damage/0.jpg" },
+      { "t": 3, "url": "/evidence/frames/vid_stub_no_damage/3.jpg" }
     ]
   },
   "default": {
@@ -83,7 +83,7 @@
       { "start": 0, "end": 5, "text": "A household product is turned toward the camera on a table under poor lighting; no close-up of damage is captured." }
     ],
     "frames": [
-      { "t": 0, "url": "https://stub.memories.local/frames/default/0.jpg" }
+      { "t": 0, "url": "/evidence/frames/default/0.jpg" }
     ]
   }
 }

@@ -45,7 +45,7 @@
   padding-top: 2px;
 }
 
-.center { display: flex; justify-content: center; }
+.center { display: flex; justify-content: center; min-width: 0; }
 
 .right {
   display: flex;
@@ -56,7 +56,9 @@
 }
 .right > * { flex-shrink: 0; }
 
+/* Data-source pill: "Demo data" (calm amber) · "Live" (green) · "Offline" (red) */
 .status {
+  --pill: var(--muted);
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -64,28 +66,49 @@
   padding: 0 10px 0 9px;
   margin-right: 4px;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--pill) 38%, var(--line));
+  background: color-mix(in srgb, var(--pill) 9%, var(--surface-2));
   font-family: var(--font-mono);
   font-size: var(--t-11);
   letter-spacing: .04em;
-  color: var(--ink-2);
+  color: var(--ink);
   white-space: nowrap;
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
+  flex: 0 0 auto;
+  cursor: default;
 }
 .statusWord { text-transform: uppercase; font-weight: 600; color: var(--ink); flex-shrink: 0; }
-.statusDetail { color: var(--muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  background: var(--pill);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pill) 22%, transparent);
 }
-.dotLive { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 22%, transparent); animation: cs-pulse 2.4s ease-in-out infinite; }
-.dotOff { background: var(--crit); box-shadow: 0 0 0 3px color-mix(in srgb, var(--crit) 22%, transparent); }
-.dotChecking { background: var(--muted); animation: cs-pulse 1.2s ease-in-out infinite; }
+.pillLive { --pill: var(--good); }
+.pillLive .dot { animation: cs-pulse 2.4s ease-in-out infinite; }
+.pillDemo { --pill: var(--warn); }
+.pillDemo .statusWord { color: var(--ink); }
+.pillNeutral { --pill: var(--ink-2); }
+.pillOff { --pill: var(--crit); }
+.pillChecking { --pill: var(--muted); }
+.pillChecking .dot { animation: cs-pulse 1.2s ease-in-out infinite; }
+
+/* Decision trace opener — only while the side panel is hidden */
+.traceBtn { position: relative; display: none; }
+.traceDot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--muted);
+}
+.traceRunning .traceDot { background: var(--accent); animation: cs-pulse 1s ease-in-out infinite; }
+.traceDone .traceDot { background: var(--good); }
+.traceError .traceDot { background: var(--crit); }
 
 .historyBtn { width: auto; padding: 0 10px 0 8px; gap: 7px; font-size: var(--t-12); font-weight: 500; }
 .historyBtnActive { background: var(--surface-2); color: var(--ink); }
@@ -96,12 +119,25 @@
   .historyBtn { width: 32px; padding: 0; }
 }
 @media (max-width: 1180px) {
-  .tagline, .statusDetail { display: none; }
+  .tagline { display: none; }
+}
+@media (max-width: 1099px) {
+  .traceBtn { display: inline-flex; }
 }
 @media (max-width: 720px) {
-  .bar { grid-template-columns: auto 1fr auto; gap: 8px; padding: 0 10px; }
+  .bar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding: 0 10px; }
   .name { display: none; }
-  .center { justify-content: flex-start; }
+  .center { justify-content: flex-start; overflow: hidden; }
+}
+/* Narrow phones: dot-only status (label in the tooltip), no GitHub link, compact controls */
+@media (max-width: 640px) {
+  .bar { gap: 6px; }
   .statusWord { display: none; }
-  .status { padding: 0 8px; }
+  .status { padding: 0 8px; gap: 0; margin-right: 0; }
+  .ghLink { display: none; }
+  .right { gap: 4px; }
+  .right :global(.iconBtn) { width: 30px; height: 30px; }
+  .historyBtn { width: 30px; }
+  .right :global(.lang-toggle) { padding: 1px; }
+  .right :global(.lang-toggle__label:not(.lang-toggle__label--active)) { display: none; }
 }

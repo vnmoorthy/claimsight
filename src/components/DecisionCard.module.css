@@ -24,6 +24,7 @@
 .replacement { --tone: var(--accent); }
 .escalated   { --tone: var(--warn); }
 .denied      { --tone: var(--crit); }
+.needs_info  { --tone: var(--ink-2); }
 .unknown     { --tone: var(--ink-2); }
 
 /* zigzag paper edge */
@@ -58,11 +59,12 @@
 }
 .brand svg { color: var(--tone); }
 .claimId {
-  font-size: var(--t-11);
-  color: var(--ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: var(--t-12);
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--ink);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .hero {
@@ -139,7 +141,28 @@
   word-break: break-word;
 }
 .muted { color: var(--muted); }
+.subId { margin-left: 8px; font-size: var(--t-11); color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* Reason: two lines, then "more" */
+.clampWrap { display: block; min-width: 0; }
+.clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.clampOpen { display: block; word-break: break-word; }
+.moreBtn {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0;
+  color: var(--accent);
+  font-size: var(--t-12);
+  font-weight: 600;
+  border-radius: 3px;
+}
+.moreBtn:hover { text-decoration: underline; }
 .chip {
   display: inline-flex;
   align-items: center;
@@ -203,10 +226,13 @@
   font-size: var(--t-12);
   color: var(--ink);
 }
-.matchList li { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-.matchList em { font-style: normal; color: var(--muted); margin-right: 4px; }
+.matchList li { line-height: 1.5; }
+.matchList b { font-weight: 600; }
 :root[data-theme="light"] .fraudBad .fraudText,
 :root[data-theme="light"] .fraudBad .matchList { color: #5a1a1a; }
+
+.actions { display: flex; justify-content: flex-start; padding: 0 16px 8px; }
+.openDesk { gap: 6px; }
 
 .foot {
   display: flex;

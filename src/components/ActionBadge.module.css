@@ -19,4 +19,5 @@
 .replacement { --tone: var(--accent); --tone-bg: var(--accent-soft); }
 .escalated   { --tone: var(--warn);   --tone-bg: var(--warn-bg); }
 .denied      { --tone: var(--crit);   --tone-bg: var(--crit-bg); }
+.needs_info  { --tone: var(--ink-2);  --tone-bg: var(--surface-2); }
 .unknown     { --tone: var(--ink-2);  --tone-bg: var(--surface-2); }

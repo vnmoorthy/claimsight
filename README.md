@@ -23,7 +23,8 @@ An after-sales teammate that watches the customer's evidence video, applies your
   <a href="#-sponsor-technologies">Sponsor tech</a> ·
   <a href="docs/deck/ClaimSight-deck.pptx">Deck (pptx)</a> ·
   <a href="docs/deck/ClaimSight-deck.pdf">Deck (pdf)</a> ·
-  <a href="docs/STORYBOARD.md">3-minute storyboard</a>
+  <a href="docs/STORYBOARD.md">3-minute storyboard</a> ·
+  <a href="docs/DEMO_CHECKLIST.md">Stage checklist</a>
 </p>
 
 ---
@@ -41,7 +42,7 @@ ClaimSight closes the loop the way the hackathon's thesis describes it: **Data �
 | 👁 | **Sees the evidence** | The customer attaches a 10-second clip. Memories.ai indexes it into captions, frames and a summary: *"white ceramic mug, chip on the rim at 0:03"*. |
 | 📜 | **Applies your policy** | Orders and policy clauses P1–P6 live as structured JSON in EdgeOne Makers storage. No vector database. Every decision cites the clauses it used. |
 | 💳 | **Executes the transaction** | Refund or replacement is written to the ledger by a cloud function that re-checks the limits itself. The model cannot exceed policy even when asked to. |
-| 🔍 | **Catches the fraud twin** | Before paying, a frame from the new clip is image-searched across every prior claim. A 0.91 match from another account freezes the claim (P5). |
+| 🔍 | **Catches the fraud twin** | Before paying, a frame from the new clip is image-searched across every prior claim. A 0.93 match from another account freezes the claim (P5). |
 | 🙋 | **Pulls a human in only when it matters** | Above $75 or on a fraud signal, the claim is escalated to Slack through a WorkBuddy **Refund Desk** skill, and to the in-app desk, where a manager approves or denies with one click. |
 | 🧾 | **Explains itself** | A streaming Decision Card: action, amount, evidence line, cited clauses, fraud matches, transaction id, latency. |
 | 🛡 | **Ships like software** | 30 golden claims, an LLM policy judge, a deploy gate with a no-regression check, PII/secrets/prompt-injection monitors, and one trace per claim in AgentX. |
@@ -49,9 +50,11 @@ ClaimSight closes the loop the way the hackathon's thesis describes it: **Data �
 
 ## 📸 Live demo
 
-| Chat: claim → Decision Card | Refund Desk: the escalated fraud twin |
+| Chat: claim → Decision Card | The fraud twin, caught before payment |
 |---|---|
-| ![Chat with Decision Card](public/screenshots/chat.png) | ![Refund Desk](public/screenshots/desk.png) |
+| ![Chat with Decision Card](public/screenshots/chat.png) | ![Fraud twin card](public/screenshots/chat-fraud.png) |
+| **Refund Desk: the human-in-the-loop queue** | **Claim drawer: evidence, trace, approve or deny** |
+| ![Refund Desk table](public/screenshots/desk-table.png) | ![Refund Desk drawer](public/screenshots/desk.png) |
 
 **Try it:** `[demo URL]` · Scenario presets are built into the composer: *Chipped mug, order A1042* (auto-refund), *Same mug, other account, A1043* (fraud twin → escalation), *Headphones $129, A1050* (above the limit → human approval).
 
@@ -115,6 +118,7 @@ Open the app, pick the demo clip *Chipped mug — A1042*, press **File claim**, 
 | `AGENTX_OTLP_URL` / `AGENTX_API_KEY` | Where each claim's trace is sent (self-hosted AgentX). |
 | `STORAGE` | `auto` (Blob with strong consistency on Makers, memory fallback locally), `blob`, `memory`. |
 | `ADMIN_TOKEN` | Protects `POST /seed` and `POST /claims-record`. |
+| `AWS_S3_BUCKET` (+ region, keys, optional `AWS_S3_ENDPOINT`) | Turns on the S3 evidence archive: every clip is copied to `claims/<order>/<video_id>.mp4` with order and video metadata. `npm run archive:smoke` tests it. |
 | `AGENT_MODE` | `llm` or `deterministic`; empty = auto (deterministic when no model key is set). |
 
 **Deploy** to EdgeOne Makers: `edgeone login`, then `edgeone makers deploy -n claimsight --area overseas` (or import the repo in the Makers console for git-push deploys).
@@ -130,6 +134,10 @@ python eval/run_eval.py                              # live: hits POST /claims f
 python eval/monitors.py                              # enables PII / secrets / prompt-injection scorers + a "refund without txn id" pattern
 ```
 
+| AgentX Observe: one trace per claim | AgentX Evaluate: gated runs |
+|---|---|
+| ![AgentX traces](assets/agentx-traces.png) | ![AgentX evaluation runs](assets/agentx-eval.png) |
+
 The gate is `run.gate(fail_under=7.5, no_regression=True)`. CI runs the dry-run gate on every push ([ci.yml](.github/workflows/ci.yml)). Injecting eight wrong decisions drops the mean to 7.33 and the job fails with exit code 1.
 
 ## 🧩 Sponsor technologies
@@ -140,8 +148,8 @@ The gate is `run.gate(fail_under=7.5, no_regression=True)`. CI runs the dry-run 
 | **Memories.ai** | Video Datalake: multipart upload, async indexing, summary and captions, frame extraction, image search over the claims collection (the fraud twin). Live path: `open_stream` + SSE captions for on-stage streaming. |
 | **AgentX** | Self-hosted trace-eval: golden dataset, policy-compliance judge, CI gate with no-regression check, online monitors, a trace per claim. |
 | **WorkBuddy** | `workbuddy/refund-desk` skill: pulls escalations, summarizes evidence and fraud matches, applies approve/deny, posts to Slack; daily .docx digest automation. |
-| **VeloDB** | `velodb/schema.sql`, `load.py`, `dashboard.sql`: auto-approval by hour, refunded dollars, fraud clusters, p95 latency. |
-| **AWS** | Production plan: S3 evidence archive and EC2 for the AgentX engine. |
+| **VeloDB** | `velodb/schema.sql`, `load.py`, `dashboard.sql`: auto-approval by hour, refunded dollars, fraud clusters, p95 latency. Verified end to end against Apache Doris 2.1 (the engine under VeloDB) in Docker: schema, loader and all 12 queries. |
+| **AWS** | S3 evidence archive on every upload (`cloud-functions/_archive.ts`, verified against an S3-compatible store), plus `aws/claimsight-infra.yaml`: a CloudFormation stack for the private evidence bucket and an EC2 host running the AgentX engine and the live-stream relay. |
 
 ## 🗂 Repository layout
 
@@ -151,10 +159,12 @@ cloud-functions/        orders-lookup · refund · replacement · claims · clai
 src/                    React app: chat, Decision Card, decision trace, Refund Desk
 data/                   orders.json · policy.json · golden_claims.json · demo_evidence.json · stubs/
 eval/                   AgentX harness: run_eval.py (gate), monitors.py
+aws/                    CloudFormation (S3 evidence bucket + EC2 host), EC2 bootstrap for AgentX and the MediaMTX live relay
 workbuddy/refund-desk/  WorkBuddy skill (SKILL.md + config.yaml)
 velodb/                 schema.sql · dashboard.sql · load.py
-docs/                   deck (pptx + generator), STORYBOARD.md, SUBMISSION.md
-assets/                 banner, architecture diagram, synthetic test clips
+docs/                   deck (pptx, pdf, generator), STORYBOARD.md, DEMO_CHECKLIST.md, SUBMISSION.md, BACKEND.md
+scripts/                local-harness.ts (Makers-compatible local runtime), index-demo-clips.ts (Memories.ai indexing)
+assets/                 banner, architecture diagram, AgentX captures, synthetic test clips
 ```
 
 ## 🔌 API
@@ -170,7 +180,7 @@ assets/                 banner, architecture diagram, synthetic test clips
 
 ## 🗺 Roadmap
 
-- Live evidence: phone stream → relay → Memories.ai `open_stream`, captions on stage in real time
+- Live evidence: phone → MediaMTX relay (see `aws/`) → Memories.ai `open_stream`, captions on stage in real time
 - Replacement inventory sync and carrier label generation
 - Multi-merchant policy packs and a policy editor in the desk
 - Judge calibration from manager overrides (AgentX feedback loop)

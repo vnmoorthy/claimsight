@@ -71,6 +71,9 @@ export function IconInbox(p: IconProps) { return <svg {...base(p)}><path d="M3 1
 export function IconMinus(p: IconProps) { return <svg {...base(p)}><path d="M5 12h14" /></svg>; }
 export function IconDot(p: IconProps) { return <svg {...base(p)}><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" /></svg>; }
 export function IconArrowRight(p: IconProps) { return <svg {...base(p)}><path d="M5 12h14M13 6l6 6-6 6" /></svg>; }
+export function IconInfo(p: IconProps) { return <svg {...base(p)}><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5M12 8h.01" /></svg>; }
+export function IconHelp(p: IconProps) { return <svg {...base(p)}><circle cx="12" cy="12" r="8.5" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5V14M12 17h.01" /></svg>; }
+export function IconImage(p: IconProps) { return <svg {...base(p)}><rect x="3.5" y="5" width="17" height="14" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="M20.5 15.5 15.5 11l-6 6" /></svg>; }
 
 export function IconSpinner({ size = 16, ...rest }: IconProps) {
   return (

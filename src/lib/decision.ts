@@ -18,7 +18,7 @@
 
 import type { ClaimAction, Decision } from '../types';
 
-export const KNOWN_ACTIONS: readonly ClaimAction[] = ['refund', 'replacement', 'escalated', 'denied'];
+export const KNOWN_ACTIONS: readonly ClaimAction[] = ['refund', 'replacement', 'escalated', 'denied', 'needs_info'];
 
 const ACTION_ALIASES: Record<string, ClaimAction> = {
   refund: 'refund',
@@ -39,6 +39,15 @@ const ACTION_ALIASES: Record<string, ClaimAction> = {
   deny: 'denied',
   reject: 'denied',
   rejected: 'denied',
+  needs_info: 'needs_info',
+  need_info: 'needs_info',
+  needs_information: 'needs_info',
+  needs_more_info: 'needs_info',
+  more_info: 'needs_info',
+  info_needed: 'needs_info',
+  info_requested: 'needs_info',
+  unknown_order: 'needs_info',
+  order_not_found: 'needs_info',
 };
 
 /** Map any action spelling the model (or a human) might use onto the four canonical actions. */
@@ -78,10 +87,19 @@ function toStringArray(v: unknown): string[] {
   return [];
 }
 
+function str(v: unknown): string | undefined {
+  return typeof v === 'string' && v.trim() ? v : undefined;
+}
+
 export function normalizeDecision(obj: Record<string, unknown>): Decision {
   const fraudRaw = obj.fraud_matches ?? obj.fraudMatches;
   return {
-    claim_id: typeof obj.claim_id === 'string' ? obj.claim_id : (typeof obj.claimId === 'string' ? obj.claimId : undefined),
+    claim_id: str(obj.claim_id) ?? str(obj.claimId),
+    order_id: str(obj.order_id) ?? str(obj.orderId),
+    display_id: str(obj.display_id) ?? str(obj.displayId),
+    customer_name: str(obj.customer_name) ?? str(obj.customerName),
+    evidence_frame_url: str(obj.evidence_frame_url) ?? str(obj.evidenceFrameUrl),
+    mode_label: str(obj.mode_label) ?? str(obj.modeLabel),
     action: String(obj.action).toLowerCase().trim(),
     amount: toNumber(obj.amount),
     currency: typeof obj.currency === 'string' ? obj.currency : undefined,

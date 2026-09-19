@@ -31,6 +31,20 @@ const PRESETS: { id: string; labelKey: MessageKeys; textKey: MessageKeys; orderI
   { id: 'headphones', labelKey: 'preset.headphones', textKey: 'preset.headphones.text', orderId: 'A1050' },
 ];
 
+/** True while the viewport matches `query` (re-evaluates on resize). */
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches);
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia(query);
+    const onChange = () => setMatches(mq.matches);
+    onChange();
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, [query]);
+  return matches;
+}
+
 function loadOrderId(): string {
   try {
     return localStorage.getItem(ORDER_ID_STORAGE_KEY) || DEFAULT_ORDER_ID;
@@ -49,6 +63,8 @@ export default function ChatInput({ onSend, onStop, onClear, disabled, onEvidenc
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { evidence, attachFile, useDemo, clear: clearEvidence } = useEvidence();
+  const narrow = useMediaQuery('(max-width: 640px)');
+  const placeholder = narrow ? t('composer.placeholderShort') : t('composer.placeholder');
 
   const evidenceBusy = evidence.status === 'uploading' || evidence.status === 'indexing';
 
@@ -186,6 +202,7 @@ export default function ChatInput({ onSend, onStop, onClear, disabled, onEvidenc
             onClick={() => handlePreset(preset)}
             disabled={disabled}
             title={t(preset.textKey)}
+            data-testid={`preset-${preset.id}`}
           >
             <span className={`${styles.presetOrder} mono`}>{preset.orderId}</span>
             {t(preset.labelKey)}
@@ -210,7 +227,7 @@ export default function ChatInput({ onSend, onStop, onClear, disabled, onEvidenc
         <textarea
           ref={textareaRef}
           className={styles.textarea}
-          placeholder={t('composer.placeholder')}
+          placeholder={placeholder}
           value={value}
           onChange={e => { setValue(e.target.value); setActivePreset(null); }}
           onKeyDown={handleKeyDown}
@@ -218,6 +235,7 @@ export default function ChatInput({ onSend, onStop, onClear, disabled, onEvidenc
           rows={1}
           disabled={disabled}
           aria-label={t('composer.placeholder')}
+          data-testid="composer-input"
         />
         <div className={styles.actions}>
           <button
@@ -227,6 +245,7 @@ export default function ChatInput({ onSend, onStop, onClear, disabled, onEvidenc
             disabled={disabled}
             aria-label={t('aria.clearHistory')}
             title={t('aria.clearHistory')}
+            data-testid="clear-conversation"
           >
             <IconTrash size={15} />
           </button>
@@ -243,6 +262,7 @@ export default function ChatInput({ onSend, onStop, onClear, disabled, onEvidenc
               disabled={sendBlocked}
               aria-label={queued ? t('composer.waiting') : t('aria.send')}
               title={queued ? t('composer.waiting') : t('aria.send')}
+              data-testid="file-claim"
             >
               {queued ? <IconSpinner size={14} /> : <IconSend size={14} />}
               {queued ? t('composer.waiting') : t('composer.file')}
@@ -250,8 +270,13 @@ export default function ChatInput({ onSend, onStop, onClear, disabled, onEvidenc
           )}
         </div>
       </div>
-      <p className={`${styles.hint} ${queued ? styles.hintQueued : ''}`}>
-        {queued ? t('composer.hintQueued') : t('composer.hint')}
+      <p className={`${styles.hint} ${queued ? styles.hintQueued : ''} ${disabled ? styles.hintChecking : ''}`} role={disabled ? 'status' : undefined} aria-live={disabled ? 'polite' : undefined} data-testid="composer-hint">
+        {disabled ? (
+          <>
+            <span className={styles.checkingDot} aria-hidden="true" />
+            {t('composer.checking')}
+          </>
+        ) : queued ? t('composer.hintQueued') : t('composer.hint')}
       </p>
     </div>
   );

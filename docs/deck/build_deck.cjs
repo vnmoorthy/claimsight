@@ -140,7 +140,7 @@ function imageFit(s, p, x, y, w, h) {
   const beats = [
     ['0:00', 'Claim', '"My mug arrived chipped, order A1042." Evidence clip attached. The trace lights up: order, policy, evidence, fraud, execute, record.'],
     ['0:30', 'Decision', 'Damage seen at 0:03. Clauses P1, P2, P4 satisfied. $24 is under the $75 limit. Refund executed, transaction id on the card.'],
-    ['1:00', 'Twin', 'Same footage from a different account. Image search finds it at 0.91 similarity. Claim frozen, escalated to Slack, denied by the manager in the Refund Desk.'],
+    ['1:00', 'Twin', 'Same footage from a different account. Image search finds it at 0.93 similarity. Claim frozen, escalated to Slack, denied by the manager in the Refund Desk.'],
   ];
   beats.forEach((b, i) => {
     const y = 2.3 + i * 1.4;
@@ -173,7 +173,7 @@ function imageFit(s, p, x, y, w, h) {
   eyebrow(s, 'The moment that turns the room', false);
   title(s, 'The same mug, a different account.', false);
   text(s, 'Every evidence clip is indexed into the claims collection. Before paying, ClaimSight takes a frame from the new clip and runs an image search across every prior claim.', { x: M, y: 2.3, w: 5.9, h: 1.1, fontSize: 15, color: C.lInk2, lineSpacingMultiple: 1.25 });
-  text(s, '0.91', { x: M, y: 3.45, w: 3, h: 1.2, fontFace: F.display, fontSize: 64, bold: true, color: C.lCrit });
+  text(s, '0.93', { x: M, y: 3.45, w: 3, h: 1.2, fontFace: F.display, fontSize: 64, bold: true, color: C.lCrit });
   text(s, 'similarity to claim C-1042, filed by another customer', { x: M, y: 4.65, w: 5.9, h: 0.5, fontSize: 14, bold: true, color: C.lInk });
   text(s, [
     { text: 'Policy P5 freezes the claim instead of paying it.', options: { bullet: true, breakLine: true } },
@@ -184,7 +184,7 @@ function imageFit(s, p, x, y, w, h) {
   card(s, 6.9, 2.2, 5.85, 4.55, false, { fill: { color: C.lSurface2 } });
   imageFit(s, shot, 7.0, 2.3, 5.65, 4.35);
   footer(s, 7, false);
-  s.addNotes('This is the wow beat. Say the number out loud: ninety-one percent similarity, different account, frozen, escalated, denied.');
+  s.addNotes('This is the wow beat. Say the number out loud: ninety-three percent similarity, different account, frozen, escalated, denied.');
 }
 
 // ---------- 8. Production ready ----------
@@ -231,7 +231,7 @@ function imageFit(s, p, x, y, w, h) {
     ['AgentX', 'Self-hosted trace-eval: golden dataset, policy judge, deploy gate with no-regression check, online PII and secrets monitors.'],
     ['WorkBuddy', 'Refund Desk skill: pulls escalations, summarizes evidence and fraud matches, takes approve or deny, posts to Slack; daily .docx report.'],
     ['VeloDB', 'claims_events table and dashboard SQL: auto-approval by hour, refunded dollars, fraud clusters, p95 latency.'],
-    ['AWS', 'Production plan: S3 evidence archive and EC2 for the AgentX self-host; the credits fund the first pilot.'],
+    ['AWS', 'S3 evidence archive on every upload (private, versioned, encrypted) and a CloudFormation stack for the EC2 host that runs AgentX and the live-evidence relay.'],
   ];
   const w = (W - 2 * M - 2 * 0.3) / 3, h = 1.85;
   tools.forEach((t, i) => {

@@ -11,7 +11,7 @@ Submit on the official platform by **3:15 PM** (deadline 3:30): https://figstudi
 **Short description (paste):**
 ClaimSight is an after-sales teammate that verifies damage from the customer's own video, applies the merchant's refund policy from structured data (no vector DB), executes refunds and replacements itself, and detects returns fraud by matching evidence footage across accounts. Escalations flow to a human in Slack through a WorkBuddy skill. Every decision is traced and gated with AgentX (30-claim golden set, policy judge, CI gate, PII monitors). Refund limits are enforced server-side, so the model can never exceed policy.
 
-**Technology stack:** EdgeOne Makers (agent runtime, cloud functions, Blob storage, AI Gateway, Pages hosting) · Claude Agent SDK with custom MCP tools · React 18 + Vite + TypeScript · Memories.ai Video Datalake (upload, index, captions, frame extraction, image search) · AgentX trace-eval (Python SDK, self-hosted engine) · WorkBuddy skill + Slack incoming webhook · VeloDB (Apache Doris) analytics · AWS (S3 evidence archive, EC2 for AgentX in production)
+**Technology stack:** EdgeOne Makers (agent runtime, cloud functions, Blob storage, AI Gateway, Pages hosting) · Claude Agent SDK with custom MCP tools · React 18 + Vite + TypeScript · Memories.ai Video Datalake (upload, index, captions, frame extraction, image search) · AgentX trace-eval (Python SDK, self-hosted engine) · WorkBuddy skill + Slack incoming webhook · VeloDB (Apache Doris) analytics · AWS (S3 evidence archive wired into the upload path; CloudFormation for the evidence bucket and an EC2 host running AgentX and the live-stream relay)
 
 **Co-host / sponsor technologies used:** Tencent EdgeOne Makers, WorkBuddy, AgentX, Memories.ai, VeloDB, AWS
 

@@ -16,10 +16,17 @@
 
 import type { CloudFunctionContext } from '@edgeone/types';
 import { createLogger } from '../_logger';
+import { archiveEvidence, isArchiveEnabled, type ArchiveResult } from '../_archive';
 import { resolveEnv, jsonResponse, errorResponse } from '../_kv';
 import { createMemoriesClient, MemoriesError } from '../_memories';
 
 const logger = createLogger('upload-evidence');
+
+function conversationHeader(context: CloudFunctionContext): string | undefined {
+  const h = (context.request as unknown as { headers?: { get?: (k: string) => string | null } })?.headers;
+  const v = typeof h?.get === 'function' ? h.get('makers-conversation-id') : null;
+  return v ?? undefined;
+}
 
 const VIDEO_EXT = /\.(mp4|mov|m4v|webm|mkv|avi)$/i;
 const VIDEO_MIME = /^video\//i;
@@ -63,6 +70,12 @@ export async function onRequestPost(context: CloudFunctionContext): Promise<Resp
   try {
     const result = await client.uploadVideo({ file, filename, orderId });
     logger.log(`[upload-evidence] order=${orderId} file=${filename} size=${file.size} stub=${client.stubbed} → ${result.video_id}`);
+    // Optional durable copy on AWS S3 (no-op unless AWS_S3_BUCKET is configured; never blocks the claim).
+    let archive: ArchiveResult = { archived: false, reason: 'AWS_S3_BUCKET not set' };
+    if (isArchiveEnabled(env)) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      archive = await archiveEvidence({ env, bytes, filename, mime, orderId, videoId: result.video_id, conversationId: conversationHeader(context) });
+    }
     return jsonResponse({
       video_id: result.video_id,
       operation: result.operation,
@@ -71,6 +84,7 @@ export async function onRequestPost(context: CloudFunctionContext): Promise<Resp
       filename,
       size: file.size,
       stubbed: client.stubbed,
+      archive: archive.archived ? { archived: true, bucket: archive.bucket, key: archive.key } : { archived: false },
     }, 202);
   } catch (e) {
     if (e instanceof MemoriesError) {

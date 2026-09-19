@@ -39,8 +39,11 @@ import TracePanel, { type EvidenceView } from './components/TracePanel';
 import ConversationSidebar from './components/ConversationSidebar';
 import Drawer from './components/Drawer';
 import RefundDesk from './components/RefundDesk';
+import ToastViewport from './components/Toast';
 import { type ViewId } from './components/ViewTabs';
-import { IconAlert, IconReceipt } from './components/icons';
+import { IconAlert } from './components/icons';
+import { NavContext, buildHash, parseHash, type DeskFocus, type NavContextValue } from './lib/nav';
+import { ToastProvider } from './lib/toast';
 import styles from './App.module.css';
 
 const CONVERSATION_ID_STORAGE_KEY = 'eo_conversation_id';
@@ -75,9 +78,14 @@ function getOrCreateEoUuid(): string {
   return eoUuid;
 }
 
-/** `#desk` deep-links straight into the Refund Desk (no router needed). */
+/** `#desk` deep-links straight into the Refund Desk; `#desk?claim=<id>` also opens that claim (no router needed). */
 function getViewFromHash(): ViewId {
-  return window.location.hash.replace(/^#/, '') === 'desk' ? 'desk' : 'chat';
+  return parseHash(window.location.hash).view;
+}
+
+function getDeskFocusFromHash(): DeskFocus | null {
+  const { claimId } = parseHash(window.location.hash);
+  return claimId ? { claimId, nonce: Date.now() } : null;
 }
 
 function isWebSearchToolEvent(event: RawSseEvent): boolean {
@@ -92,7 +100,9 @@ let _historyFetchInFlight = false;
 export default function App() {
   return (
     <I18nProvider>
-      <AppInner />
+      <ToastProvider>
+        <AppInner />
+      </ToastProvider>
     </I18nProvider>
   );
 }
@@ -107,6 +117,8 @@ function AppInner() {
 
   // Top-level view: Chat | Refund Desk (mirrored into the URL hash).
   const [view, setViewState] = useState<ViewId>(getViewFromHash);
+  // `#desk?claim=<id>` — the claim whose drawer the desk should open.
+  const [deskFocus, setDeskFocus] = useState<DeskFocus | null>(getDeskFocusFromHash);
   const [deskPending, setDeskPending] = useState<number | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [traceOpen, setTraceOpen] = useState(false);
@@ -139,19 +151,42 @@ function AppInner() {
   }, [activeConversationId]);
 
   // ── View switching (hash-synced, no router) ──
-  const setView = useCallback((next: ViewId) => {
-    setViewState(next);
-    const hash = next === 'desk' ? '#desk' : '';
+  const writeHash = useCallback((hash: string) => {
     if (window.location.hash !== hash) {
       history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
     }
   }, []);
 
+  const setView = useCallback((next: ViewId) => {
+    setViewState(next);
+    setDeskFocus(null);
+    writeHash(buildHash(next));
+  }, [writeHash]);
+
+  /** Decision Card → "Open in Refund Desk": switch views and open that claim's drawer. */
+  const openInDesk = useCallback((claimId: string) => {
+    setViewState('desk');
+    setDeskFocus({ claimId, nonce: Date.now() });
+    writeHash(buildHash('desk', claimId));
+  }, [writeHash]);
+
+  /** The desk closed the drawer — drop the claim from the hash so a reload does not reopen it. */
+  const handleDeskFocusDone = useCallback(() => {
+    setDeskFocus(null);
+    writeHash(buildHash('desk'));
+  }, [writeHash]);
+
   useEffect(() => {
-    const onHashChange = () => setViewState(getViewFromHash());
+    const onHashChange = () => {
+      const parsed = parseHash(window.location.hash);
+      setViewState(parsed.view);
+      setDeskFocus(parsed.claimId ? { claimId: parsed.claimId, nonce: Date.now() } : null);
+    };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  const nav = useMemo<NavContextValue>(() => ({ view, setView, openInDesk }), [view, setView, openInDesk]);
 
   useEffect(() => {
     document.title = t('app.title');
@@ -571,10 +606,17 @@ function AppInner() {
     return null;
   }, [trace.decision, messages]);
 
+  // The clip that rode along with the customer message behind the latest decision
+  // (not just any earlier message that happened to carry evidence).
   const lastUserMeta = useMemo(() => {
+    let anchor = messages.length - 1;
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
-      if (m.role === 'user' && m.meta?.evidenceVideoId) return m.meta;
+      if (m.role === 'assistant' && m.content && extractDecision(m.content, !!m.streaming).decision) { anchor = i; break; }
+    }
+    for (let i = anchor; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === 'user') return m.meta?.evidenceVideoId ? m.meta : null;
     }
     return null;
   }, [messages]);
@@ -613,12 +655,14 @@ function AppInner() {
       record={traceRecord}
       debugEvents={debugEvents}
       onClearDebug={clearDebug}
+      fallbackModeLabel={status.modeLabel}
     />
   );
 
   const offline = !status.checking && !status.online;
 
   return (
+    <NavContext.Provider value={nav}>
     <div className={styles.shell}>
       <TopBar
         view={view}
@@ -629,6 +673,8 @@ function AppInner() {
         onToggleTheme={toggleTheme}
         onOpenHistory={() => setHistoryOpen(true)}
         historyOpen={historyOpen}
+        onOpenTrace={() => setTraceOpen(true)}
+        tracePhase={trace.phase}
       />
 
       {offline && (
@@ -643,10 +689,6 @@ function AppInner() {
             stream or evidence upload keeps running in the background. */}
         <div className={`${styles.chatStage} ${view === 'desk' ? styles.hidden : ''}`} aria-hidden={view === 'desk'}>
           <div className={styles.conversation}>
-            <button type="button" className={`btn btn-sm ${styles.traceFab}`} onClick={() => setTraceOpen(true)}>
-              <IconReceipt size={14} />
-              {t('trace.open')}
-            </button>
             <div className={styles.messagesShell}>
               <ChatWindow messages={messages} loading={loading} />
               {historyLoading && messages.length === 0 && (
@@ -669,7 +711,14 @@ function AppInner() {
         </div>
 
         {view === 'desk' && (
-          <RefundDesk active onPendingCount={setDeskPending} onGoToChat={() => setView('chat')} />
+          <RefundDesk
+            active
+            onPendingCount={setDeskPending}
+            onGoToChat={() => setView('chat')}
+            focus={deskFocus}
+            onFocusDone={handleDeskFocusDone}
+            modeLabel={status.modeLabel}
+          />
         )}
       </main>
 
@@ -696,6 +745,9 @@ function AppInner() {
       <Drawer open={traceOpen} onClose={() => setTraceOpen(false)} side="right" width={420} label={t('trace.title')} closeLabel={t('desk.detail.close')}>
         {tracePanel}
       </Drawer>
+
+      <ToastViewport />
     </div>
+    </NavContext.Provider>
   );
 }

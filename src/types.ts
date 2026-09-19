@@ -100,11 +100,28 @@ export interface ListConversationsResponse {
    ═══════════════════════════════════════════════════════════════ */
 
 /** Canonical actions the agent can take. Aliases are normalised in lib/decision.ts. */
-export type ClaimAction = 'refund' | 'replacement' | 'escalated' | 'denied';
+export type ClaimAction = 'refund' | 'replacement' | 'escalated' | 'denied' | 'needs_info';
+
+/**
+ * Presentation fields the backend attaches to claims, decision blocks and
+ * fraud matches. Every one is optional — the UI derives a fallback when the
+ * backend has not produced it yet (see lib/labels.ts).
+ */
+export interface ClaimPresentation {
+  /** Human-friendly claim number shown everywhere, e.g. "C-A1043-F809". */
+  display_id?: string;
+  /** Customer's name, e.g. "Alice Moreno" (customer_id stays as the small line). */
+  customer_name?: string;
+  /** Same-origin still from the evidence clip, e.g. /evidence/frames/<video_id>/3.jpg. */
+  evidence_frame_url?: string;
+  /** "Policy engine" or "AI model · <model>". */
+  mode_label?: string;
+}
 
 /** The fenced ```decision block the agent appends to its final message. */
-export interface Decision {
+export interface Decision extends ClaimPresentation {
   claim_id?: string;
+  order_id?: string;
   action: ClaimAction | string;
   amount?: number;
   currency?: string;
@@ -116,13 +133,15 @@ export interface Decision {
   reason?: string;
 }
 
-export type ClaimStatus = 'auto_approved' | 'pending_review' | 'approved' | 'denied' | 'replacement';
+export type ClaimStatus = 'auto_approved' | 'pending_review' | 'approved' | 'denied' | 'replacement' | 'needs_info';
 
 export interface FraudMatch {
   video_id?: string;
   claim_id?: string;
+  display_id?: string;
   score?: number;
   customer_id?: string;
+  customer_name?: string;
   order_id?: string;
 }
 
@@ -137,7 +156,7 @@ export interface ToolCallTrace {
 }
 
 /** KV record `claims:<claim_id>` as returned by GET /claims. */
-export interface ClaimRecord {
+export interface ClaimRecord extends ClaimPresentation {
   claim_id: string;
   order_id?: string;
   customer_id?: string;
@@ -179,6 +198,10 @@ export interface BackendStatus {
   online: boolean;
   backend?: string;
   memoriesStubbed?: boolean;
+  /** "Demo data" | "Live" — the product-facing word for the data source. */
+  backendLabel?: string;
+  /** "Policy engine" | "AI model · <model>". */
+  modeLabel?: string;
   pendingReview?: number;
   checkedAt?: number;
 }

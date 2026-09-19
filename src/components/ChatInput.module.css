@@ -83,6 +83,8 @@
   overflow-y: auto;
 }
 .textarea::placeholder { color: var(--muted); }
+/* Single-line placeholder on narrow screens (a one-row textarea would hide the wrapped tail) */
+.textarea:placeholder-shown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .textarea:disabled { cursor: not-allowed; }
 
 .actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
@@ -99,6 +101,15 @@
   transition: color var(--dur-fast) var(--ease);
 }
 .hintQueued { color: var(--accent); }
+.hintChecking { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); }
+.checkingDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: cs-pulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
 
 @media (max-width: 720px) {
   .composer { padding: 8px 12px 8px; }
