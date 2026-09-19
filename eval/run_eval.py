@@ -459,7 +459,8 @@ def make_agent(client: AgentX, by_id: Dict[str, Dict[str, Any]], args: argparse.
             "evidence_video_id": case["evidence_video_id"],
             "stream": False,
         }
-        headers = {"Content-Type": "application/json", "Makers-Conversation-Id": f"eval-{cid}"}
+        # x-claimsight-eval: evaluations never trigger a Damage Twin render (twin.status "skipped").
+        headers = {"Content-Type": "application/json", "Makers-Conversation-Id": f"eval-{cid}", "x-claimsight-eval": "1"}
         with client.tracer.trace(
             AGENT_TRACE_NAME,
             input={"conversation_id": f"eval-{cid}", **body},

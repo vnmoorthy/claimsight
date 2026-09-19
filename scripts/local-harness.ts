@@ -5,10 +5,12 @@
  *
  *   cloud-functions/<name>/index.ts  → /<name>   (onRequest<Method> | onRequest)
  *   agents/claims/index.ts           → POST /claims
+ *   public/{twins,lab,evidence}/…    → static files (Damage Twin renders, lab results, evidence frames)
  *
  * Run: npm run dev:local   (= STORAGE=memory MEMORIES_STUB=1 npx tsx scripts/local-harness.ts)
  */
 import http from 'node:http';
+import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -19,7 +21,48 @@ const CLOUD_FUNCTIONS = [
   'seed', 'orders-lookup', 'upload-evidence', 'evidence-status', 'refund', 'replacement', 'claims',
   'claims-record', 'claims-decision', 'stats', 'agentx-emit', 'demo-evidence', 'claims-list',
   'history', 'conversations', 'clear-history', 'delete-conversation',
+  'claim', 'twin-ready',
 ];
+// Static files under public/ that the backend produces or references (served by Vite in the UI dev
+// server too): Damage Twin renders, Synthetic Evidence Lab results, evidence poster frames.
+const STATIC_PREFIXES = ['/twins/', '/lab/', '/evidence/'];
+const PUBLIC_DIR = path.join(ROOT, 'public');
+const MIME: Record<string, string> = {
+  '.mp4': 'video/mp4', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.json': 'application/json',
+  '.webm': 'video/webm', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8',
+};
+
+/** GET /twins/<id>.mp4 etc. straight from public/ (Range requests supported so <video> can seek). */
+async function serveStatic(req: http.IncomingMessage, res: http.ServerResponse, pathname: string): Promise<void> {
+  const file = path.resolve(PUBLIC_DIR, `.${decodeURIComponent(pathname)}`);
+  if (!file.startsWith(PUBLIC_DIR + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+    res.writeHead(404, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ error: 'not_found', path: pathname }));
+    return;
+  }
+  const size = fs.statSync(file).size;
+  const type = MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
+  const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range ?? ''));
+  let start = 0;
+  let end = size - 1;
+  let status = 200;
+  if (range && size > 0) {
+    start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2] || 0));
+    end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : end;
+    if (Number.isFinite(start) && Number.isFinite(end) && start <= end && start < size) status = 206;
+    else { start = 0; end = size - 1; }
+  }
+  const headers: Record<string, string> = {
+    'content-type': type, 'content-length': String(end - start + 1), 'accept-ranges': 'bytes',
+    'cache-control': 'no-cache', 'access-control-allow-origin': '*',
+  };
+  if (status === 206) headers['content-range'] = `bytes ${start}-${end}/${size}`;
+  res.writeHead(status, headers);
+  if (req.method === 'HEAD') { res.end(); return; }
+  await new Promise<void>((resolve, reject) => {
+    fs.createReadStream(file, { start, end }).on('error', reject).on('end', resolve).pipe(res);
+  });
+}
 
 const modules = new Map<string, Promise<Record<string, unknown>>>();
 function load(rel: string): Promise<Record<string, unknown>> {
@@ -112,6 +155,11 @@ const server = http.createServer(async (req, res) => {
   const name = url.pathname.replace(/^\/+|\/+$/g, '');
   const method = (req.method ?? 'GET').toUpperCase();
   try {
+    if ((method === 'GET' || method === 'HEAD') && STATIC_PREFIXES.some(p => url.pathname.startsWith(p))) {
+      await serveStatic(req, res, url.pathname);
+      console.log(`[harness] ${method} ${url.pathname} → ${res.statusCode} static (${Date.now() - started}ms)`);
+      return;
+    }
     const raw = await readRaw(req);
     const headers = toHeaders(req);
     const ct = headers.get('content-type') ?? '';

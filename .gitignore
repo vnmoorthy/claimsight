@@ -45,3 +45,7 @@ docs/deck/*.pdf
 !docs/deck/ClaimSight-deck.pdf
 docs/deck/*.jpg
 blender/out/
+
+# Rendered twins and lab clips (regenerated)
+public/twins/clm_*
+public/lab/clips/*.mp4

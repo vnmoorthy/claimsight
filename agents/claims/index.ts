@@ -4,7 +4,9 @@
  *
  * File path agents/claims/index.ts maps to **POST /claims**
  *
- * Body: `{ message, order_id?, evidence_video_id?, email?, stream?, userId?, userMsgId?, botMsgId? }`
+ * Body: `{ message, order_id?, evidence_video_id?, email?, stream?, skip_twin?, userId?, userMsgId?, botMsgId? }`
+ *   - `skip_twin: true` (or header `x-claimsight-eval: 1`): never request a Damage Twin render for this
+ *     claim (twin.status "skipped") — evaluations and load tests use it so they cannot fill the render queue
  *   - default: SSE stream (same events as the template chat: text_delta / tool_called / done …,
  *     plus `claim` at start and `decision` once the decision is recorded)
  *   - `stream: false`: runs the agent to completion and returns JSON `{ text, decision, … }`
@@ -369,11 +371,16 @@ export async function onRequest(context: AgentContext) {
   const userMsgId = str(body.userMsgId);
   const botMsgId = str(body.botMsgId);
   const userId = str(body.userId) ?? str(body.user_id);
+  const headers = (context.request?.headers ?? {}) as Record<string, string | undefined>;
+  const evalHeader = headers['x-claimsight-eval'] ?? headers['X-Claimsight-Eval'];
+  const skipTwin = body.skip_twin === true || body.skip_twin === 'true' || body.skip_twin === 1
+    || (typeof evalHeader === 'string' && ['1', 'true', 'yes'].includes(evalHeader.trim().toLowerCase()));
   const hints = {
     orderId: str(body.order_id) ?? str(body.orderId),
     videoId: str(body.evidence_video_id) ?? str(body.video_id) ?? str(body.videoId),
     email: str(body.email),
     evidenceSummary: str(body.evidence_summary) ?? str(body.evidence_summary_stub),
+    skipTwin,
   };
 
   const env = resolveEnv(context.env);
@@ -385,7 +392,7 @@ export async function onRequest(context: AgentContext) {
   const model = mode === 'deterministic' ? 'deterministic' : (env.AI_GATEWAY_MODEL?.trim() || DEFAULT_MODEL);
   const fallbackModel = env.AI_GATEWAY_FALLBACK_MODEL?.trim() || FALLBACK_MODEL;
 
-  logger.log(`[request] cid=${conversationId || '-'} claim=${claimId} order=${hints.orderId ?? '-'} video=${hints.videoId ?? '-'} stream=${streamMode} mode=${mode} (${modeReason}) model=${model}`);
+  logger.log(`[request] cid=${conversationId || '-'} claim=${claimId} order=${hints.orderId ?? '-'} video=${hints.videoId ?? '-'} stream=${streamMode} mode=${mode} (${modeReason}) model=${model}${skipTwin ? ' twin=skipped' : ''}`);
 
   const claimsStore = await getClaimsStore(env);
   const policy = await getPolicy(claimsStore);

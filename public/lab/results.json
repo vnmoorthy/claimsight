@@ -1,0 +1,692 @@
+{
+  "generated_at": "2026-09-19T19:48:25.848Z",
+  "detector": "local-baseline",
+  "options": {
+    "count": 12,
+    "seed": 5,
+    "reuse": false,
+    "out": "blender/out/lab",
+    "twin_rate": 1,
+    "damaged_rate": 0.7,
+    "render": {
+      "out": "/Users/moorthy/Downloads/Projects/Executable World- A Full Stack AI Hackathon & Mixer/claimsight/blender/out/lab",
+      "count": 12,
+      "seed": 5,
+      "twin_rate": 1,
+      "damaged_rate": 0.7,
+      "width": 640,
+      "height": 360,
+      "fps": 12,
+      "duration": 4,
+      "samples": 8
+    }
+  },
+  "clips": [
+    {
+      "clip_id": "clip_001",
+      "product": "tshirt",
+      "damaged": true,
+      "damage_type": "stain",
+      "damage_location": "fabric",
+      "group_id": "g001",
+      "twin_of": null,
+      "mirrored": false,
+      "poster": "/lab/clips/clip_001.png",
+      "video": "/lab/clips/clip_001.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_007",
+          "score": 0.8883
+        },
+        {
+          "clip_id": "clip_006",
+          "score": 0.8473
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.8146
+        },
+        {
+          "clip_id": "clip_002",
+          "score": 0.7974
+        },
+        {
+          "clip_id": "clip_011",
+          "score": 0.7308
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_002",
+      "product": "tshirt",
+      "damaged": true,
+      "damage_type": "stain",
+      "damage_location": "fabric",
+      "group_id": "g001",
+      "twin_of": "clip_001",
+      "mirrored": false,
+      "poster": "/lab/clips/clip_002.png",
+      "video": "/lab/clips/clip_002.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_006",
+          "score": 0.8426
+        },
+        {
+          "clip_id": "clip_001",
+          "score": 0.7974
+        },
+        {
+          "clip_id": "clip_007",
+          "score": 0.7926
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.7498
+        },
+        {
+          "clip_id": "clip_009",
+          "score": 0.7306
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_003",
+      "product": "headphones",
+      "damaged": true,
+      "damage_type": "scuff",
+      "damage_location": "cup",
+      "group_id": "g002",
+      "twin_of": null,
+      "mirrored": false,
+      "poster": "/lab/clips/clip_003.png",
+      "video": "/lab/clips/clip_003.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_007",
+          "score": 0.8813
+        },
+        {
+          "clip_id": "clip_001",
+          "score": 0.8146
+        },
+        {
+          "clip_id": "clip_006",
+          "score": 0.7968
+        },
+        {
+          "clip_id": "clip_009",
+          "score": 0.758
+        },
+        {
+          "clip_id": "clip_002",
+          "score": 0.7498
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_004",
+      "product": "headphones",
+      "damaged": true,
+      "damage_type": "scuff",
+      "damage_location": "cup",
+      "group_id": "g002",
+      "twin_of": "clip_003",
+      "mirrored": true,
+      "poster": "/lab/clips/clip_004.png",
+      "video": "/lab/clips/clip_004.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_006",
+          "score": 0.7094
+        },
+        {
+          "clip_id": "clip_001",
+          "score": 0.701
+        },
+        {
+          "clip_id": "clip_012",
+          "score": 0.6962
+        },
+        {
+          "clip_id": "clip_007",
+          "score": 0.6708
+        },
+        {
+          "clip_id": "clip_002",
+          "score": 0.6658
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_005",
+      "product": "headphones",
+      "damaged": false,
+      "damage_type": null,
+      "damage_location": null,
+      "group_id": "g003",
+      "twin_of": null,
+      "mirrored": false,
+      "poster": "/lab/clips/clip_005.png",
+      "video": "/lab/clips/clip_005.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_008",
+          "score": 0.7962
+        },
+        {
+          "clip_id": "clip_009",
+          "score": 0.7551
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.7447
+        },
+        {
+          "clip_id": "clip_001",
+          "score": 0.6937
+        },
+        {
+          "clip_id": "clip_007",
+          "score": 0.6721
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_006",
+      "product": "headphones",
+      "damaged": true,
+      "damage_type": "scuff",
+      "damage_location": "cup",
+      "group_id": "g004",
+      "twin_of": null,
+      "mirrored": false,
+      "poster": "/lab/clips/clip_006.png",
+      "video": "/lab/clips/clip_006.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_007",
+          "score": 0.8669
+        },
+        {
+          "clip_id": "clip_001",
+          "score": 0.8473
+        },
+        {
+          "clip_id": "clip_002",
+          "score": 0.8426
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.7968
+        },
+        {
+          "clip_id": "clip_011",
+          "score": 0.7144
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_007",
+      "product": "headphones",
+      "damaged": true,
+      "damage_type": "scuff",
+      "damage_location": "cup",
+      "group_id": "g004",
+      "twin_of": "clip_006",
+      "mirrored": false,
+      "poster": "/lab/clips/clip_007.png",
+      "video": "/lab/clips/clip_007.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_001",
+          "score": 0.8883
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.8813
+        },
+        {
+          "clip_id": "clip_006",
+          "score": 0.8669
+        },
+        {
+          "clip_id": "clip_002",
+          "score": 0.7926
+        },
+        {
+          "clip_id": "clip_011",
+          "score": 0.7107
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_008",
+      "product": "headphones",
+      "damaged": true,
+      "damage_type": "scuff",
+      "damage_location": "cup",
+      "group_id": "g005",
+      "twin_of": null,
+      "mirrored": false,
+      "poster": "/lab/clips/clip_008.png",
+      "video": "/lab/clips/clip_008.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_005",
+          "score": 0.7962
+        },
+        {
+          "clip_id": "clip_009",
+          "score": 0.7787
+        },
+        {
+          "clip_id": "clip_011",
+          "score": 0.7197
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.7112
+        },
+        {
+          "clip_id": "clip_002",
+          "score": 0.7052
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_009",
+      "product": "headphones",
+      "damaged": true,
+      "damage_type": "scuff",
+      "damage_location": "cup",
+      "group_id": "g005",
+      "twin_of": "clip_008",
+      "mirrored": false,
+      "poster": "/lab/clips/clip_009.png",
+      "video": "/lab/clips/clip_009.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_012",
+          "score": 0.8278
+        },
+        {
+          "clip_id": "clip_010",
+          "score": 0.779
+        },
+        {
+          "clip_id": "clip_008",
+          "score": 0.7787
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.758
+        },
+        {
+          "clip_id": "clip_005",
+          "score": 0.7551
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_010",
+      "product": "tshirt",
+      "damaged": false,
+      "damage_type": null,
+      "damage_location": null,
+      "group_id": "g006",
+      "twin_of": null,
+      "mirrored": false,
+      "poster": "/lab/clips/clip_010.png",
+      "video": "/lab/clips/clip_010.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_009",
+          "score": 0.779
+        },
+        {
+          "clip_id": "clip_012",
+          "score": 0.7632
+        },
+        {
+          "clip_id": "clip_005",
+          "score": 0.6594
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.6482
+        },
+        {
+          "clip_id": "clip_008",
+          "score": 0.629
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_011",
+      "product": "vase",
+      "damaged": false,
+      "damage_type": null,
+      "damage_location": null,
+      "group_id": "g007",
+      "twin_of": null,
+      "mirrored": false,
+      "poster": "/lab/clips/clip_011.png",
+      "video": "/lab/clips/clip_011.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_012",
+          "score": 0.74
+        },
+        {
+          "clip_id": "clip_001",
+          "score": 0.7308
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.7291
+        },
+        {
+          "clip_id": "clip_008",
+          "score": 0.7197
+        },
+        {
+          "clip_id": "clip_002",
+          "score": 0.7145
+        }
+      ]
+    },
+    {
+      "clip_id": "clip_012",
+      "product": "lamp",
+      "damaged": true,
+      "damage_type": "chip",
+      "damage_location": "base",
+      "group_id": "g008",
+      "twin_of": null,
+      "mirrored": false,
+      "poster": "/lab/clips/clip_012.png",
+      "video": "/lab/clips/clip_012.mp4",
+      "top_matches": [
+        {
+          "clip_id": "clip_009",
+          "score": 0.8278
+        },
+        {
+          "clip_id": "clip_010",
+          "score": 0.7632
+        },
+        {
+          "clip_id": "clip_011",
+          "score": 0.74
+        },
+        {
+          "clip_id": "clip_003",
+          "score": 0.7087
+        },
+        {
+          "clip_id": "clip_006",
+          "score": 0.7045
+        }
+      ]
+    }
+  ],
+  "curve": [
+    {
+      "threshold": 0.5,
+      "recall": 1,
+      "fpr": 1,
+      "precision": 0.0606,
+      "f1": 0.1143,
+      "mirrored_recall": 1
+    },
+    {
+      "threshold": 0.52,
+      "recall": 1,
+      "fpr": 1,
+      "precision": 0.0606,
+      "f1": 0.1143,
+      "mirrored_recall": 1
+    },
+    {
+      "threshold": 0.54,
+      "recall": 1,
+      "fpr": 0.9839,
+      "precision": 0.0615,
+      "f1": 0.1159,
+      "mirrored_recall": 1
+    },
+    {
+      "threshold": 0.56,
+      "recall": 1,
+      "fpr": 0.9355,
+      "precision": 0.0645,
+      "f1": 0.1212,
+      "mirrored_recall": 1
+    },
+    {
+      "threshold": 0.58,
+      "recall": 1,
+      "fpr": 0.8871,
+      "precision": 0.0678,
+      "f1": 0.127,
+      "mirrored_recall": 1
+    },
+    {
+      "threshold": 0.6,
+      "recall": 1,
+      "fpr": 0.871,
+      "precision": 0.069,
+      "f1": 0.129,
+      "mirrored_recall": 1
+    },
+    {
+      "threshold": 0.62,
+      "recall": 1,
+      "fpr": 0.871,
+      "precision": 0.069,
+      "f1": 0.129,
+      "mirrored_recall": 1
+    },
+    {
+      "threshold": 0.64,
+      "recall": 1,
+      "fpr": 0.7903,
+      "precision": 0.0755,
+      "f1": 0.1404,
+      "mirrored_recall": 1
+    },
+    {
+      "threshold": 0.66,
+      "recall": 0.75,
+      "fpr": 0.7258,
+      "precision": 0.0625,
+      "f1": 0.1154,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.68,
+      "recall": 0.75,
+      "fpr": 0.5806,
+      "precision": 0.0769,
+      "f1": 0.1395,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.7,
+      "recall": 0.75,
+      "fpr": 0.5,
+      "precision": 0.0882,
+      "f1": 0.1579,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.72,
+      "recall": 0.75,
+      "fpr": 0.3065,
+      "precision": 0.1364,
+      "f1": 0.2308,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.74,
+      "recall": 0.75,
+      "fpr": 0.2581,
+      "precision": 0.1579,
+      "f1": 0.2609,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.76,
+      "recall": 0.75,
+      "fpr": 0.1774,
+      "precision": 0.2143,
+      "f1": 0.3333,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.78,
+      "recall": 0.5,
+      "fpr": 0.1452,
+      "precision": 0.1818,
+      "f1": 0.2667,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.8,
+      "recall": 0.25,
+      "fpr": 0.0968,
+      "precision": 0.1429,
+      "f1": 0.1818,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.82,
+      "recall": 0.25,
+      "fpr": 0.0806,
+      "precision": 0.1667,
+      "f1": 0.2,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.84,
+      "recall": 0.25,
+      "fpr": 0.0645,
+      "precision": 0.2,
+      "f1": 0.2222,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.86,
+      "recall": 0.25,
+      "fpr": 0.0323,
+      "precision": 0.3333,
+      "f1": 0.2857,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.88,
+      "recall": 0,
+      "fpr": 0.0323,
+      "precision": 0,
+      "f1": 0,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.9,
+      "recall": 0,
+      "fpr": 0,
+      "precision": 0,
+      "f1": 0,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.92,
+      "recall": 0,
+      "fpr": 0,
+      "precision": 0,
+      "f1": 0,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.94,
+      "recall": 0,
+      "fpr": 0,
+      "precision": 0,
+      "f1": 0,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.96,
+      "recall": 0,
+      "fpr": 0,
+      "precision": 0,
+      "f1": 0,
+      "mirrored_recall": 0
+    },
+    {
+      "threshold": 0.98,
+      "recall": 0,
+      "fpr": 0,
+      "precision": 0,
+      "f1": 0,
+      "mirrored_recall": 0
+    }
+  ],
+  "recommended_threshold": 0.76,
+  "twin_pairs": [
+    {
+      "a": "clip_001",
+      "b": "clip_002",
+      "group_id": "g001",
+      "product": "tshirt",
+      "damage_type": "stain",
+      "mirrored": false,
+      "score": 0.7974,
+      "detected": true
+    },
+    {
+      "a": "clip_003",
+      "b": "clip_004",
+      "group_id": "g002",
+      "product": "headphones",
+      "damage_type": "scuff",
+      "mirrored": true,
+      "score": 0.6573,
+      "detected": false
+    },
+    {
+      "a": "clip_006",
+      "b": "clip_007",
+      "group_id": "g004",
+      "product": "headphones",
+      "damage_type": "scuff",
+      "mirrored": false,
+      "score": 0.8669,
+      "detected": true
+    },
+    {
+      "a": "clip_008",
+      "b": "clip_009",
+      "group_id": "g005",
+      "product": "headphones",
+      "damage_type": "scuff",
+      "mirrored": false,
+      "score": 0.7787,
+      "detected": true
+    }
+  ],
+  "summary": {
+    "clips": 12,
+    "twin_pairs": 4,
+    "recall": 0.75,
+    "fpr": 0.1774,
+    "precision": 0.2143,
+    "f1": 0.3333,
+    "mirrored_recall": 0,
+    "mirrored_pairs": 1,
+    "render_seconds": 88,
+    "detect_seconds": 0.1,
+    "detector": "local-baseline"
+  }
+}

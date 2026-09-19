@@ -17,13 +17,14 @@ import { z } from 'zod';
 import {
   getOrder, getPolicy, nowIso, round2, displayIdFor, modeLabelFor, orderNotFoundMessage,
   type AgentMode, type ClaimAction, type ClaimRecord, type ClaimsStore, type Env, type FraudMatch,
-  type OrderRecord, type Policy, type ToolCallTrace, type VideoIndexEntry,
+  type OrderRecord, type Policy, type ToolCallTrace, type TwinInfo, type VideoIndexEntry,
 } from '../_kv';
 import { MemoriesError, type CaptionSegment, type MemoriesClient } from '../_memories';
 import {
   deriveOrderFacts, evidenceLine, extractDamage, extractProducts, looksWorn, mentionsNoDamage,
   statusForAction,
 } from '../_policy';
+import { buildTwinSpec, requestTwinRender } from './_twin';
 
 export const TOOL_NAMES = [
   'lookup_order', 'get_policy', 'inspect_evidence', 'fraud_check',
@@ -46,7 +47,7 @@ export interface ClaimsToolDeps {
   /** 'deterministic' (policy engine) or 'llm'; drives mode_label on records and the block. */
   mode: AgentMode;
   model: string;
-  hints: { orderId?: string; videoId?: string; email?: string; evidenceSummary?: string };
+  hints: { orderId?: string; videoId?: string; email?: string; evidenceSummary?: string; skipTwin?: boolean };
   logger: Logger;
   fetchImpl?: typeof fetch;
 }
@@ -70,6 +71,8 @@ export interface DecisionBlock {
   latency_ms: number;
   mode: AgentMode;
   mode_label: string;
+  /** Damage Twin render state: queued (render service accepted it) or unavailable; the UI polls GET /claim for ready. */
+  twin?: TwinInfo;
 }
 
 export interface EvidenceResult {
@@ -289,6 +292,21 @@ export function createClaimsTools(deps: ClaimsToolDeps): ClaimsToolSet {
       mode: deps.mode,
       mode_label: state.modeLabel,
     };
+  }
+
+  /**
+   * Damage Twin: hand the decided claim to the Blender render service (TWIN_RENDER_URL) so the
+   * Decision Card can show a 3D receipt. Fire-and-forget with a 2 s budget — the claim never waits
+   * for or fails on the render; without evidence or a reachable service the twin is "unavailable".
+   */
+  async function requestTwin(claim: ClaimRecord): Promise<TwinInfo> {
+    // Evaluations / load tests opt out (body skip_twin:true or header x-claimsight-eval: 1): nothing is rendered.
+    if (deps.hints.skipTwin) return { status: 'skipped' };
+    const ev = state.evidence;
+    const hasEvidence = ev ? ev.ready && !!claim.evidence_summary : !!deps.hints.evidenceSummary;
+    if (!hasEvidence) return { status: 'unavailable', error: 'no evidence to render' };
+    const spec = buildTwinSpec({ claim, evidence: ev, intakeSummary: ev ? undefined : deps.hints.evidenceSummary });
+    return requestTwinRender({ env, claimId: claim.claim_id, spec, fetchImpl: doFetch, logger });
   }
 
   /**
@@ -661,6 +679,7 @@ export function createClaimsTools(deps: ClaimsToolDeps): ClaimsToolSet {
           action, amount: finalAmount, reason, policy_clauses, recommended_action: recommended_action ?? state.escalation?.recommended_action,
           txn_id: txnId, evidence_summary, sku,
         });
+        claim.twin = await requestTwin(claim);
         const rec = await callSelf('/claims-record', 'POST', { claim });
         const stored = (rec.ok && rec.body?.claim) ? rec.body.claim as ClaimRecord : claim;
         const emit = await callSelf('/agentx-emit', 'POST', { claim: stored });
@@ -680,6 +699,7 @@ export function createClaimsTools(deps: ClaimsToolDeps): ClaimsToolSet {
           latency_ms: claim.latency_ms,
           mode: deps.mode,
           mode_label: state.modeLabel,
+          twin: stored.twin ?? claim.twin ?? { status: 'unavailable' },
         };
         state.recorded = { claim: stored, block, trace_id: emit.body?.trace_id, agentx_emitted: !!emit.body?.emitted };
         return {
@@ -729,6 +749,7 @@ export function createClaimsTools(deps: ClaimsToolDeps): ClaimsToolSet {
       model: deps.model,
       mode: deps.mode,
       mode_label: state.modeLabel,
+      twin: { status: 'unavailable' },
     };
     let stored = claim;
     let recorded = false;
@@ -764,6 +785,7 @@ export function createClaimsTools(deps: ClaimsToolDeps): ClaimsToolSet {
       latency_ms: claim.latency_ms,
       mode: deps.mode,
       mode_label: state.modeLabel,
+      twin: { status: 'unavailable' },
     };
     state.recorded = { claim: stored, block, trace_id: traceId, agentx_emitted: emitted };
     logger.log(`[needs_info] claim=${deps.claimId} display=${state.displayId} kind=${needs.kind} recorded=${recorded}`);

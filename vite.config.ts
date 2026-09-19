@@ -17,6 +17,7 @@ const BACKEND_ROUTES = [
   // cloud-functions/ (ClaimSight)
   '/upload-evidence', '/evidence-status', '/demo-evidence', '/orders-lookup',
   '/refund', '/replacement', '/claims-decision', '/stats', '/seed', '/agentx-emit',
+  '/claim', '/twin-ready', '/twins', '/lab',
 ]
 
 export default defineConfig({

@@ -107,6 +107,23 @@ export interface ToolCallTrace {
   error?: string;
 }
 
+/**
+ * Damage Twin (Blender render of the claim) lifecycle on a claim record. `skipped` = the caller opted
+ * out (evaluations send `skip_twin:true` / `x-claimsight-eval: 1`), `unavailable` = no evidence or no render service.
+ */
+export type TwinStatus = 'queued' | 'rendering' | 'ready' | 'failed' | 'unavailable' | 'skipped';
+
+export interface TwinInfo {
+  status: TwinStatus;
+  /** Same-origin MP4 / poster under public/twins/ once the render is ready. */
+  video_url?: string;
+  poster_url?: string;
+  requested_at?: string;
+  ready_at?: string;
+  render_ms?: number;
+  error?: string;
+}
+
 export interface ClaimRecord {
   claim_id: string;
   /** Friendly id shown to customers and reviewers: C-<order_id>-<4 hex from the claim_id tail>. */
@@ -134,6 +151,8 @@ export interface ClaimRecord {
   mode?: AgentMode;
   /** Human label for `mode`: "Policy engine" or "AI model · <model id>". */
   mode_label?: string;
+  /** Damage Twin render state (queued → rendering → ready | failed; unavailable when no render service / no evidence). */
+  twin?: TwinInfo;
   updated_at?: string;
 }
 
@@ -559,13 +578,30 @@ export function orderNotFoundMessage(orderId: string): string {
   return `I couldn't find order ${orderId} — check the number on your confirmation email.`;
 }
 
-/** Backfill display_id / mode_label on records written before these fields existed. */
+export const TWIN_STATUSES: TwinStatus[] = ['queued', 'rendering', 'ready', 'failed', 'unavailable', 'skipped'];
+
+/** Validate a twin object from a request body; undefined when it is not a usable twin. */
+export function normalizeTwin(raw: unknown): TwinInfo | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const t = raw as Record<string, unknown>;
+  if (typeof t.status !== 'string' || !TWIN_STATUSES.includes(t.status as TwinStatus)) return undefined;
+  const out: TwinInfo = { status: t.status as TwinStatus };
+  for (const key of ['video_url', 'poster_url', 'requested_at', 'ready_at', 'error'] as const) {
+    if (typeof t[key] === 'string' && (t[key] as string).trim()) out[key] = (t[key] as string).trim();
+  }
+  if (typeof t.render_ms === 'number' && Number.isFinite(t.render_ms)) out.render_ms = Math.round(t.render_ms);
+  return out;
+}
+
+/** Backfill display_id / mode_label / twin on records written before these fields existed. */
 export function withDisplayFields(claim: ClaimRecord): ClaimRecord {
   const out = claim;
   if (!out.display_id) out.display_id = displayIdFor(out.claim_id, out.order_id);
   if (!out.mode) out.mode = out.model && out.model !== 'deterministic' ? 'llm' : 'deterministic';
   if (!out.mode_label) out.mode_label = modeLabelFor(out.mode, out.model);
   if (out.evidence_frame_url === undefined) out.evidence_frame_url = null;
+  // Records written before the Damage Twin existed (and needs_info records) read as "unavailable".
+  if (!out.twin || typeof out.twin !== 'object' || !TWIN_STATUSES.includes(out.twin.status)) out.twin = { status: 'unavailable' };
   if (Array.isArray(out.fraud?.matches)) {
     for (const m of out.fraud.matches) {
       if (m && !m.display_id && m.claim_id) m.display_id = displayIdFor(m.claim_id, m.order_id ?? '');

@@ -259,3 +259,52 @@ The link uses `PUBLIC_UI_URL` (new in `.env.example`, default `http://localhost:
 ### LLM readiness
 
 `buildSystemPrompt` (`agents/claims/index.ts`) was rewritten for production tone: no demo language, fixed tool order (lookup → policy → inspect → fraud → decide → execute/escalate → record), facts only from tool results, product-voice reasons, customer reply under 120 words that quotes the `display_id` (never the internal claim id), and a final fenced block copied verbatim from `record_decision` (which already carries `display_id`, `mode_label`, `evidence_frame_url`). Tool schemas are unchanged except for the added output fields. Untested end-to-end against a live gateway in this loop (no model key configured locally); the deterministic engine exercises the same tool handlers and the golden set passes 30/30.
+
+## Blender integration
+
+Two Blender pipelines (`blender/README.md`) are wired into the backend: the **Damage Twin** — a 3D receipt rendered for every decided claim — and the **Synthetic Evidence Lab** — labelled twin clips that measure the fraud-twin detector. Nothing under `src/` changed; every field below is additive.
+
+### Damage Twin (claim → render service → record)
+
+```
+record_decision (agents/claims/_twin.ts)            scripts/render-service.ts (:8090, concurrency 1)
+  build spec from the claim + evidence  ──POST /render/twin {claim_id, spec}──▶  queue → blender -b -P blender/damage_twin.py
+  twin = {status:"queued", requested_at}  ◀──202 {job_id, status:"queued"}──     public/twins/<claim_id>.mp4 + .png
+  POST /claims-record {claim + twin}                                              ──POST /twin-ready {claim_id, video_url, poster_url, render_ms}──▶ twin.status "ready"
+                                                                                  (or {claim_id, error} → "failed")
+```
+
+* **Record shape.** Claim records, `/claims-list` items and the fenced ```decision block carry `twin: {status, video_url?, poster_url?, requested_at?, ready_at?, render_ms?, error?}` with `status` ∈ `queued | rendering | ready | failed | unavailable | skipped`. Older records and `needs_info` records read as `{status:"unavailable"}` (`withDisplayFields` backfills it). `POST /claims-record` accepts `twin` on the body (validated by `normalizeTwin`) and keeps the stored one when the body has none.
+* **When a twin is requested.** `record_decision` builds the spec and asks the render service only for real decisions (refund / replacement / escalated / denied) with evidence (a ready video, or the intake summary). The request has a 2 s budget (`TWIN_REQUEST_TIMEOUT_MS`); unreachable, slow, rejected or `TWIN_RENDER_URL=off` ⇒ `twin.status "unavailable"` with the reason in `twin.error`. The claim never waits for or fails on the render: the block answers with `twin:{status:"queued"}` (or `unavailable`) and the UI polls `GET /claim` until `ready`. **Opt-out for evaluations:** body `skip_twin: true` or header `x-claimsight-eval: 1` on `POST /claims` records `twin:{status:"skipped"}` and never contacts the render service — `eval/run_eval.py` sends the header, and the golden-check snippet below should too, so only real demo claims render.
+* **Spec mapping** (`buildTwinSpec`): `product` from the SKU prefix (MUG→mug, HDPH→headphones, LAMP→lamp, VASE→vase, TSHIRT→tshirt, else generic); `damage_location` = the first location keyword valid for that product (rim/handle/base, hinge/headband/cup, shade/stem/base, body/neck/base, collar/fabric/sleeve) found in a non-negated evidence clause that mentions damage, else the product's first location; `damage_type` = the earliest chip/crack/dent/scuff/tear/stain/scratch/bend in a non-negated clause, else `damage`; `evidence_time` = the first `m:ss` in the caption/timeline, else the first damage segment's start; plus `evidence_line`, `action`, `amount`, `txn_id`, `policy_clauses`, `display_id`, `order_id`, `customer_name`, `frame_url` (= `evidence_frame_url`). `color` is left unset (product default). Stub demo clips resolve to mug chip@rim 0:03, headphones crack@headband 0:04, lamp dent@shade 0:02, vase crack@base 0:02, t-shirt stain@collar 0:03.
+* **`GET /claim?claim_id=…`** (`cloud-functions/claim`, also `POST {claim_id}`): one full record with the display fields and `twin` backfilled; 404 `claim_not_found`. **`POST /twin-ready`** (`cloud-functions/twin-ready`): `{claim_id, video_url, poster_url, render_ms}` → `ready` (+ `ready_at`), `{claim_id, error}` → `failed`, `{claim_id, status:"rendering"}` → `rendering`; only the `twin` field changes; returns `{ok, claim_id, display_id, twin, claim}`; protected by `x-admin-token` when `ADMIN_TOKEN` is set (same helper as `/seed`). Both are registered in `scripts/local-harness.ts`, which now also serves `public/twins/`, `public/lab/` and `public/evidence/` statically (Range requests supported) so `curl :8088/twins/<id>.mp4` works without Vite.
+* **Render service** (`npm run render:service`, `scripts/render-service.ts`, port `RENDER_PORT` = 8090): `GET /health` → `{ok, blender:{found, path}, queue}`; `POST /render/twin {claim_id, spec}` → `202 {job_id, status:"queued"}` immediately (idempotent while a job for that claim is queued/rendering; `503 blender_not_found` when Blender is missing); `GET /render/status/<claim_id>` → `{status, video_url?, poster_url?, error?}`. One Blender process at a time and at most `TWIN_MAX_QUEUE` (8) pending jobs — beyond that `POST /render/twin` answers `429 {error:"queue_full"}` (the claim records `unavailable`) so a runaway loop can never block a stage demo; defaults 800×450 · 20 fps · 4 s · 12 samples (`TWIN_WIDTH/HEIGHT/FPS/DURATION/SAMPLES`), `BLENDER_BIN` (default `/Applications/Blender.app/Contents/MacOS/Blender`, else `blender` on PATH), `TWIN_RENDER_TIMEOUT_MS` (10 min). `spec.frame_url` that is http(s) is downloaded to a temp file; a `/evidence/…` path is resolved under `public/` (or fetched from `CLAIMSIGHT_URL`). Output goes to `public/twins/<claim_id>.mp4` + `.png` (rendered in a temp dir, copied when complete); then `POST ${CLAIMSIGHT_URL}/twin-ready` (default `http://localhost:8088`, `ADMIN_TOKEN` forwarded; a 404 is retried, the record is written right after the request). Before rendering it asks `GET /claim` and skips claims that were wiped by a `/seed` in between. One log line per job with timing: `job=… claim=… mug chip@rim status=ready total=24.3s blender=23.1s -> /twins/<id>.mp4 callback=ok`.
+* **Env.** `TWIN_RENDER_URL` (agent → render service, default `http://localhost:8090`), `TWIN_REQUEST_TIMEOUT_MS`, `RENDER_PORT`, `BLENDER_BIN`, `CLAIMSIGHT_URL`, `TWIN_*`, `MEMORIES_LAB_COLLECTION` — all in `.env.example`. Local run: `npm run render:service` in one terminal, `TWIN_RENDER_URL=http://localhost:8090 npm run dev:local` in another.
+
+### Synthetic Evidence Lab (`npm run lab`)
+
+```bash
+npm run lab -- --count 24 --seed 7            # render 24 clips (twin-rate 1.0, damaged-rate 0.7) + score + report
+npm run lab -- --count 24 --seed 7 --reuse    # skip the render when blender/out/lab/manifest.json exists
+python eval/lab_eval.py                       # optional: AgentX dataset "ClaimSight fraud-twin lab" + gated run (needs AGENTX_API_KEY)
+```
+
+`scripts/lab.ts` runs `blender/synth_evidence.py`, then scores every ordered pair of clips (positive = same `group_id`) with one of two detectors: **memories.ai** when `MEMORIES_API_KEY` is set and `MEMORIES_STUB` is not `1` — every clip is uploaded into the lab collection (`MEMORIES_LAB_COLLECTION`, else a new `claimsight-lab` collection whose id is printed), indexing operations are awaited, and each clip's first frame (`getMoment(video, 0, 2, ['frame'])`) is searched against the collection with the same `searchByImage` (top_k 10) call the agent's `fraud_check` makes; otherwise the **local baseline** — a 64-bit dHash plus an 8×8 mean-colour signature of each poster PNG (decoded in-process, no native deps), `score = 0.7 · (1 − Hamming/64) + 0.3 · colour similarity`, taking the better of the plain and horizontally-flipped hash so mirrored twins are not penalised. Thresholds 0.50…0.98 (step 0.02) give recall / FPR / precision / F1 plus recall on mirrored twins; `recommended_threshold` is the best F1 (ties → the higher threshold). Output: `public/lab/results.json` (`{generated_at, detector, collection_id?, options, clips[], curve[], recommended_threshold, twin_pairs[], summary}`), posters and clips copied to `public/lab/clips/<clip_id>.{png,mp4}`, and a summary table on stdout. `eval/lab_eval.py` turns `twin_pairs` into an AgentX dataset with one case per pair and a code scorer (10 when detected at the recommended threshold, else 0), gated at `fail_under=8`; it exits 0 with a note when `AGENTX_API_KEY` is unset.
+
+Golden check with the twin opt-out (31 cases, expect 0 mismatches; nothing is rendered):
+
+```python
+import json, urllib.request
+B = "http://localhost:8088"
+def post(p, b, h={}):
+    r = urllib.request.Request(B + p, data=json.dumps(b).encode(), headers={"Content-Type": "application/json", **h}, method="POST")
+    return json.load(urllib.request.urlopen(r, timeout=120))
+cases = json.load(open("data/golden_claims.json"))
+bad = []
+for c in cases:
+    post("/seed", {})
+    r = post("/claims", {"message": c["message"], "order_id": c["order_id"], "evidence_video_id": c.get("evidence_video_id"), "stream": False},
+             {"Makers-Conversation-Id": "g-" + c["id"], "x-claimsight-eval": "1"})
+    if (r.get("decision") or {}).get("action") != c["expected_action"]: bad.append(c["id"])
+print(len(cases), "cases", len(bad), "mismatches", bad)
+```

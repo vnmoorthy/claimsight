@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "index:clips": "npx tsx scripts/index-demo-clips.ts",
     "archive:smoke": "npx tsx scripts/archive-smoke.ts",
-    "preflight": "npx tsx scripts/preflight.ts"
+    "preflight": "npx tsx scripts/preflight.ts",
+    "render:service": "npx tsx scripts/render-service.ts",
+    "lab": "npx tsx scripts/lab.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.144",

@@ -16,7 +16,7 @@ import type { CloudFunctionContext } from '@edgeone/types';
 import { createLogger } from '../_logger';
 import {
   getClaimsStore, resolveEnv, readJsonBody, jsonResponse, errorResponse, isAdminAuthorized,
-  upsertClaim, getOrder, nowIso, displayIdFor, modeLabelFor,
+  upsertClaim, getOrder, nowIso, displayIdFor, modeLabelFor, normalizeTwin,
   type ClaimRecord, type ClaimStatus, type AgentMode,
 } from '../_kv';
 
@@ -81,6 +81,10 @@ export async function onRequestPost(context: CloudFunctionContext): Promise<Resp
     mode,
     mode_label: raw.mode_label || (mode ? modeLabelFor(mode, raw.model) : undefined),
   };
+  // Damage Twin state travels with the record: record_decision sets queued / unavailable, POST /twin-ready
+  // flips it to ready / failed later. Left out of the merge when the body carries none (keeps the stored one).
+  const twin = normalizeTwin(raw.twin);
+  if (twin) claim.twin = twin;
 
   try {
     const store = await getClaimsStore(env);
