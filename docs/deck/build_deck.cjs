@@ -139,7 +139,7 @@ function imageFit(s, p, x, y, w, h) {
   title(s, 'A chipped mug. A refund. A fraud catch.', false);
   const beats = [
     ['0:00', 'Claim', '"My mug arrived chipped, order A1042." Evidence clip attached. The trace lights up: order, policy, evidence, fraud, execute, record.'],
-    ['0:30', 'Decision', 'Damage seen at 0:03. Clauses P1, P2, P4 satisfied. $24 is under the $75 limit. Refund executed, transaction id on the card.'],
+    ['0:30', 'Decision', 'Damage seen at 0:02. Window checked (P1), damage visible (P2), replacement-first rule applied (P4). $24 is under the $75 limit: refund executed, transaction id on the card.'],
     ['1:00', 'Twin', 'Same footage from a different account. Image search finds it at 0.93 similarity. Claim frozen, escalated to Slack, denied by the manager in the Refund Desk.'],
   ];
   beats.forEach((b, i) => {
@@ -174,7 +174,7 @@ function imageFit(s, p, x, y, w, h) {
   title(s, 'The same mug, a different account.', false);
   text(s, 'Every evidence clip is indexed into the claims collection. Before paying, ClaimSight takes a frame from the new clip and runs an image search across every prior claim.', { x: M, y: 2.3, w: 5.9, h: 1.1, fontSize: 15, color: C.lInk2, lineSpacingMultiple: 1.25 });
   text(s, '0.93', { x: M, y: 3.45, w: 3, h: 1.2, fontFace: F.display, fontSize: 64, bold: true, color: C.lCrit });
-  text(s, 'similarity to claim C-1042, filed by another customer', { x: M, y: 4.65, w: 5.9, h: 0.5, fontSize: 14, bold: true, color: C.lInk });
+  text(s, 'similarity to the claim on order A1042, filed by another customer', { x: M, y: 4.65, w: 5.9, h: 0.5, fontSize: 14, bold: true, color: C.lInk });
   text(s, [
     { text: 'Policy P5 freezes the claim instead of paying it.', options: { bullet: true, breakLine: true } },
     { text: 'The manager gets a Slack ping through the WorkBuddy Refund Desk skill.', options: { bullet: true, breakLine: true } },

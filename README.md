@@ -121,6 +121,8 @@ Open the app, pick the demo clip *Chipped mug — A1042*, press **File claim**, 
 | `AWS_S3_BUCKET` (+ region, keys, optional `AWS_S3_ENDPOINT`) | Turns on the S3 evidence archive: every clip is copied to `claims/<order>/<video_id>.mp4` with order and video metadata. `npm run archive:smoke` tests it. |
 | `AGENT_MODE` | `llm` or `deterministic`; empty = auto (deterministic when no model key is set). |
 
+**Preflight** before a demo: `npm run preflight` checks the backend, the AI Gateway key, Memories.ai (and that the demo clips are indexed), AgentX, Slack and the S3 archive in one command.
+
 **Deploy** to EdgeOne Makers: `edgeone login`, then `edgeone makers deploy -n claimsight --area overseas` (or import the repo in the Makers console for git-push deploys).
 
 ## 🛡 Production readiness

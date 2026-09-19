@@ -38,10 +38,10 @@ do not retry blindly.
 
    ```json
    {
-     "claim_id": "clm_7f2a", "order_id": "A1050", "customer_id": "c_carol", "sku": "HDPH-02",
+     "claim_id": "clm_7f2a", "display_id": "C-A1050-7F2A", "order_id": "A1050", "customer_id": "c_carol", "customer_name": "Carol Nguyen", "sku": "HDPH-02",
      "video_id": "vid_...", "evidence_summary": "Over-ear headphones; crack across the right hinge at 0:05.",
      "damage_assessment": "hinge cracked", 
-     "fraud": {"checked": true, "matches": [{"video_id": "vid_...", "claim_id": "clm_...", "score": 0.94, "customer_id": "c_alice"}]},
+     "fraud": {"checked": true, "matches": [{"video_id": "vid_...", "claim_id": "clm_...", "display_id": "C-A1042-81D3", "score": 0.94, "customer_id": "c_alice", "customer_name": "Alice Moreno"}]},
      "decision": {"action": "escalated", "amount": 129.0, "reason": "Amount above $75 auto-approve limit",
                   "policy_clauses": ["P2", "P3"], "by": "agent"},
      "status": "pending_review", "created_at": "2026-09-19T09:12:44Z", "latency_ms": 18342
@@ -54,14 +54,14 @@ do not retry blindly.
 2. **Summarize each claim** in this shape (one block per claim, numbered):
 
    ```
-   1) Order A1050 · HDPH-02 · $129.00 · customer c_carol · waiting 2h
+   1) C-A1050-7F2A · Order A1050 · HDPH-02 · $129.00 · Carol Nguyen · waiting 2h
       Evidence: Over-ear headphones; crack across the right hinge at 0:05.
       Fraud matches: 0
       Agent recommends: refund — Amount above $75 auto-approve limit (P2, P3)
    ```
 
    - Amount = `decision.amount`; if `decision.action` is `replacement`, say "replacement" instead of a dollar figure.
-   - Fraud matches = length of `fraud.matches`; when > 0 list `customer_id` and `score` of each match and add the warning "same footage as another account".
+   - Fraud matches = length of `fraud.matches`; when > 0 list each match as `display_id` · `customer_name` · `score` and add the warning "same footage as another account".
    - "Agent recommends" = `decision.action` + `decision.reason` + clauses. The clauses mean:
      P1 30-day window from delivery · P2 damage must be visible in evidence · P3 amounts above $75 need human approval ·
      P4 kitchen/lighting items are replaced first when in stock · P5 matching evidence across accounts is suspected fraud · P6 worn apparel is not returnable.
@@ -92,8 +92,8 @@ do not retry blindly.
 
 ```
 :package: *Refund Desk — 2026-09-19 09:41* — 3 claims reviewed by Priya
-• A1050 · HDPH-02 · $129.00 — *APPROVED* → txn_8f3a12 (P2, P3 human approval)
-• A1043 · MUG-01 · $24.00 — *DENIED* — suspected fraud: matches c_alice's clip (0.94) (P5)
+• C-A1050-7F2A · A1050 · HDPH-02 · $129.00 · Carol Nguyen — *APPROVED* → txn_8f3a12 (P2, P3 human approval)
+• C-A1043-8800 · A1043 · MUG-01 · $24.00 · Mallory Quinn — *DENIED* — suspected fraud: matches C-A1042-81D3 / Alice Moreno (0.94) (P5)
 • A1077 · TSHIRT-04 · $19.00 — *SKIPPED* — waiting for the customer's reply
 Totals: approved $129.00 (1) · denied 1 · skipped 1 · fraud flags 1 · still pending 1
 Desk: {CLAIMSIGHT_UI_URL}/#desk
@@ -149,8 +149,8 @@ Posted to #refund-desk:
 
 ```
 :package: *Refund Desk — 2026-09-19 09:41* — 3 claims reviewed by Priya
-• A1050 · HDPH-02 · $129.00 — *APPROVED* → txn_8f3a12 (P2, P3 human approval)
-• A1043 · MUG-01 · $24.00 — *DENIED* — suspected fraud: matches c_alice's clip (0.94) (P5)
+• C-A1050-7F2A · A1050 · HDPH-02 · $129.00 · Carol Nguyen — *APPROVED* → txn_8f3a12 (P2, P3 human approval)
+• C-A1043-8800 · A1043 · MUG-01 · $24.00 · Mallory Quinn — *DENIED* — suspected fraud: matches C-A1042-81D3 / Alice Moreno (0.94) (P5)
 • A1077 · TSHIRT-04 · $19.00 — *SKIPPED* — waiting for the customer's reply
 Totals: approved $129.00 (1) · denied 1 · skipped 1 · fraud flags 1 · still pending 1
 Desk: http://localhost:8088/desk
